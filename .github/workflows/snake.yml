@@ -27,7 +27,8 @@ jobs:
       - name: Generate Snake
         uses: Platane/snk/svg-only@v3
         with:
-          github_user_name: rithika-IO
+          # Always the current repo owner, so a username change never breaks this.
+          github_user_name: ${{ github.repository_owner }}
           outputs: |
             dist/github-snake.svg
             dist/github-snake-dark.svg?color_snake=#5EEAD4&color_dots=#1A1530,#3B1D5E,#6D28A8,#C026D3,#F472B6
@@ -39,7 +40,8 @@ jobs:
         run: python3 scripts/build_panels.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_USER: rithikamandiv-ux
+          # Same source as above, read by the script as its GraphQL login.
+          GH_USER: ${{ github.repository_owner }}
           OUT_DIR: dist
 
       - name: Push Snake to output branch
