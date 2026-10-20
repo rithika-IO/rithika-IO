@@ -27,7 +27,7 @@ jobs:
       - name: Generate Snake
         uses: Platane/snk/svg-only@v3
         with:
-          github_user_name: rithikamandiv-IO
+          github_user_name: rithika-IO
           outputs: |
             dist/github-snake.svg
             dist/github-snake-dark.svg?color_snake=#5EEAD4&color_dots=#1A1530,#3B1D5E,#6D28A8,#C026D3,#F472B6
