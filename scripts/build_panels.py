@@ -502,7 +502,6 @@ def radio_body(messages: list[str]) -> tuple[str, int]:
             f'<g opacity="0">{text(x + 34, y + 84, "“" + message + "”", 26, WHITE, 800, italic=True, glow=True)}'
             f'<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;{share * 0.08:.3f};{share * 0.9:.3f};{share:.3f};1" '
             f'dur="{cycle}s" begin="{i * hold}s;{i * hold}s+{cycle}s" repeatCount="indefinite"/></g>')
-    parts.append(text(x + w - 34, y + 130, f"new message every {hold} seconds", 13, SOFT, 400, "end"))
     return "\n    ".join(parts), y + h + 36
 
 
@@ -523,6 +522,61 @@ def track_body(snake_svg: str) -> tuple[str, int]:
     top = HEAD + 22
     flag = f'<g transform="translate(46,{top + 10})">{checkered(0, 0, 1, 10, rows=int(snake_h / 10) - 2)}{checkered(10, 10, 1, 10, rows=int(snake_h / 10) - 3)}</g>'
     return f'{flag}<svg x="80" y="{top}" width="{width}" height="{snake_h}" viewBox="{view.group(1)}">{inner}</svg>', top + snake_h + 30
+
+
+CAR_BODY, CAR_TYRE = "#1B2A6B", "#111111"
+
+
+def car_shape(scale: float = 1.0) -> str:
+    """Top-down F1 car pointing right (+x), centred on its middle, about 120 x 48 units before scaling."""
+    t = lambda x, y, w, h: f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="4" fill="{CAR_TYRE}" stroke="#555" stroke-width="1"/>'
+    return f'''<g transform="scale({scale})">
+  <g transform="translate(-60,0)">
+    <!-- rear wing -->
+    <rect x="0" y="-22" width="12" height="44" rx="2" fill="{RED}"/><rect x="2" y="-22" width="3" height="44" fill="{YEL}"/>
+    <!-- rear tyres -->
+    {t(14,-26,24,13)}{t(14,13,24,13)}
+    <!-- floor / sidepods -->
+    <path d="M10,-9 L30,-16 L62,-17 L74,-9 L74,9 L62,17 L30,16 L10,9 Z" fill="{CAR_BODY}"/>
+    <path d="M34,-16 L60,-16 L60,-12 L34,-11 Z M34,16 L60,16 L60,12 L34,11 Z" fill="{RED}"/>
+    <!-- nose -->
+    <path d="M60,-7 L104,-4 L114,0 L104,4 L60,7 Z" fill="{CAR_BODY}"/>
+    <path d="M70,-2 L110,-1 L114,0 L110,1 L70,2 Z" fill="{RED}"/>
+    <path d="M106,-3 L114,0 L106,3 Z" fill="{YEL}"/>
+    <!-- engine cover and cockpit -->
+    <path d="M14,-5 L52,-8 L52,8 L14,5 Z" fill="#24357F"/>
+    <ellipse cx="58" cy="0" rx="10" ry="6" fill="#05081C"/>
+    <circle cx="56" cy="0" r="4.2" fill="{YEL}"/>
+    <path d="M48,-7 Q62,-9 68,0 Q62,9 48,7" fill="none" stroke="#9AA6C8" stroke-width="2"/>
+    <text x="30" y="4" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" font-size="11" fill="{WHITE}">33</text>
+    <!-- suspension arms -->
+    <path d="M78,-6 L84,-16 M78,6 L84,16 M30,-9 L26,-14 M30,9 L26,14" stroke="#9AA6C8" stroke-width="1.6"/>
+    <!-- front tyres -->
+    {t(76,-27,20,12)}{t(76,15,20,12)}
+    <!-- front wing -->
+    <path d="M108,-24 L118,-22 L118,22 L108,24 Z" fill="{RED}"/><rect x="112" y="-22" width="3" height="44" fill="{YEL}"/>
+  </g></g>'''
+
+
+def lap_car(height: int) -> str:
+    """An F1 car that drives laps around the whole panel.
+
+    The route is a rounded rectangle just inside the border. <animateMotion>
+    moves the car along that path, and rotate="auto" turns it to face the
+    direction of travel, so it steers through each corner. The lap time grows
+    with the panel height so the car keeps the same speed.
+    """
+    inset, r = 44, 70
+    x0, y0, x1, y1 = inset, inset, W - inset, height - inset
+    route = (f"M{x0 + r},{y0} H{x1 - r} A{r},{r} 0 0 1 {x1},{y0 + r} V{y1 - r} A{r},{r} 0 0 1 {x1 - r},{y1} "
+             f"H{x0 + r} A{r},{r} 0 0 1 {x0},{y1 - r} V{y0 + r} A{r},{r} 0 0 1 {x0 + r},{y0} Z")
+    lap = round(2 * ((x1 - x0) + (y1 - y0)) / 320)        # about 320 px per second
+    return f'''<path id="lap" d="{route}" fill="none" stroke="{WHITE}" stroke-opacity="0.08" stroke-width="2" stroke-dasharray="14 12"/>
+    <g>
+      <rect x="-190" y="-3" width="140" height="6" rx="2.5" fill="url(#trail)" filter="url(#glow)"/>
+      {car_shape(0.95)}
+      <animateMotion dur="{lap}s" repeatCount="indefinite" rotate="auto"><mpath href="#lap"/></animateMotion>
+    </g>'''
 
 
 # --------------------------------------------------------------------------
@@ -570,6 +624,7 @@ def build_profile(content: dict, streaks: dict, stats: dict, snake_svg: str, tod
     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40,0 H0 V40" fill="none" stroke="{BLUE}" stroke-opacity="0.12"/></pattern>
     <clipPath id="clip"><rect x="1" y="1" width="{W - 2}" height="{height - 2}" rx="14"/></clipPath>
     <clipPath id="langbar"><rect x="0" y="0" width="344" height="10" rx="5"/></clipPath>
+    <linearGradient id="trail" x1="0" x2="1"><stop offset="0" stop-color="{YEL}" stop-opacity="0"/><stop offset="1" stop-color="{YEL}" stop-opacity="0.9"/></linearGradient>
     <filter id="glow" x="-30%" y="-200%" width="160%" height="500%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
   <g clip-path="url(#clip)">
@@ -579,6 +634,7 @@ def build_profile(content: dict, streaks: dict, stats: dict, snake_svg: str, tod
     {speed_lines(33, height)}
     </g>
     {joined}
+    {lap_car(height)}
     <polygon points="0,{height} 520,{height} 556,{height - 18} 0,{height - 18}" fill="{RED}" filter="url(#glow)"/>
     <polygon points="562,{height - 18} 586,{height - 18} 550,{height} 526,{height}" fill="{YEL}" filter="url(#glow)"/>
   </g>
