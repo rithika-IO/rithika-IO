@@ -527,7 +527,7 @@ def track_body(snake_svg: str) -> tuple[str, int]:
 CAR_BODY, CAR_TYRE = "#1B2A6B", "#111111"
 
 
-def car_shape(scale: float = 1.0) -> str:
+def car_shape(scale: float = 1.0, body: str = CAR_BODY) -> str:
     """Top-down F1 car pointing right (+x), centred on its middle, about 120 x 48 units before scaling."""
     t = lambda x, y, w, h: f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="4" fill="{CAR_TYRE}" stroke="#555" stroke-width="1"/>'
     return f'''<g transform="scale({scale})">
@@ -537,10 +537,10 @@ def car_shape(scale: float = 1.0) -> str:
     <!-- rear tyres -->
     {t(14,-26,24,13)}{t(14,13,24,13)}
     <!-- floor / sidepods -->
-    <path d="M10,-9 L30,-16 L62,-17 L74,-9 L74,9 L62,17 L30,16 L10,9 Z" fill="{CAR_BODY}"/>
+    <path d="M10,-9 L30,-16 L62,-17 L74,-9 L74,9 L62,17 L30,16 L10,9 Z" fill="{body}"/>
     <path d="M34,-16 L60,-16 L60,-12 L34,-11 Z M34,16 L60,16 L60,12 L34,11 Z" fill="{RED}"/>
     <!-- nose -->
-    <path d="M60,-7 L104,-4 L114,0 L104,4 L60,7 Z" fill="{CAR_BODY}"/>
+    <path d="M60,-7 L104,-4 L114,0 L104,4 L60,7 Z" fill="{body}"/>
     <path d="M70,-2 L110,-1 L114,0 L110,1 L70,2 Z" fill="{RED}"/>
     <path d="M106,-3 L114,0 L106,3 Z" fill="{YEL}"/>
     <!-- engine cover and cockpit -->
@@ -558,25 +558,45 @@ def car_shape(scale: float = 1.0) -> str:
   </g></g>'''
 
 
-def lap_car(height: int) -> str:
-    """An F1 car that drives laps around the whole panel.
+def race_cars(height: int) -> str:
+    """Two small F1 cars racing each other down the panel along a zigzag line.
 
-    The route is a rounded rectangle just inside the border. <animateMotion>
-    moves the car along that path, and rotate="auto" turns it to face the
-    direction of travel, so it steers through each corner. The lap time grows
-    with the panel height so the car keeps the same speed.
+    The racing line is a sine wave that sweeps across the full width while it
+    moves down. It is stored as one <path>, and <animateMotion> drives each car
+    along it; rotate="auto" turns the car to face its direction of travel.
+
+    Both cars finish the run at the same moment, but keyPoints/keyTimes give
+    them a different pace in each part of the run, so they keep overtaking
+    each other. The second car follows a line shifted down slightly, like a
+    parallel lane, so they pass side by side instead of through each other.
     """
-    inset, r = 44, 70
-    x0, y0, x1, y1 = inset, inset, W - inset, height - inset
-    route = (f"M{x0 + r},{y0} H{x1 - r} A{r},{r} 0 0 1 {x1},{y0 + r} V{y1 - r} A{r},{r} 0 0 1 {x1 - r},{y1} "
-             f"H{x0 + r} A{r},{r} 0 0 1 {x0},{y1 - r} V{y0 + r} A{r},{r} 0 0 1 {x0 + r},{y0} Z")
-    lap = round(2 * ((x1 - x0) + (y1 - y0)) / 320)        # about 320 px per second
-    return f'''<path id="lap" d="{route}" fill="none" stroke="{WHITE}" stroke-opacity="0.08" stroke-width="2" stroke-dasharray="14 12"/>
+    import math
+    top, bottom, amplitude, wavelength = 40, height - 40, (W - 140) / 2, 520
+    centre = W / 2
+
+    def line(shift: float) -> str:
+        points = []
+        for y in range(top, bottom + 1, 8):
+            x = centre + amplitude * math.sin(2 * math.pi * (y - top) / wavelength)
+            points.append(f"{x:.1f},{y + shift}")
+        return "M" + " L".join(points)
+
+    length = sum(2 * amplitude * 4 for _ in range(int((bottom - top) / wavelength) + 1))
+    run = round(length / 700)                               # about 700 px per second
+    cars = [  # (path id, lane shift, body colour, pace)
+        ("lineA", 0, CAR_BODY, "0;0.30;0.48;0.78;1"),
+        ("lineB", 26, BLUE, "0;0.24;0.55;0.72;1"),
+    ]
+    out = []
+    for path_id, shift, body, pace in cars:
+        out.append(f'''<path id="{path_id}" d="{line(shift)}" fill="none" stroke="none"/>
     <g>
-      <rect x="-190" y="-3" width="140" height="6" rx="2.5" fill="url(#trail)" filter="url(#glow)"/>
-      {car_shape(0.95)}
-      <animateMotion dur="{lap}s" repeatCount="indefinite" rotate="auto"><mpath href="#lap"/></animateMotion>
-    </g>'''
+      <rect x="-48" y="-1.5" width="36" height="3" rx="1.5" fill="url(#trail)" filter="url(#glow)"/>
+      {car_shape(0.24, body)}
+      <animateMotion dur="{run}s" repeatCount="indefinite" rotate="auto" calcMode="linear"
+        keyPoints="{pace}" keyTimes="0;0.25;0.5;0.75;1"><mpath href="#{path_id}"/></animateMotion>
+    </g>''')
+    return "\n    ".join(out)
 
 
 # --------------------------------------------------------------------------
@@ -634,7 +654,7 @@ def build_profile(content: dict, streaks: dict, stats: dict, snake_svg: str, tod
     {speed_lines(33, height)}
     </g>
     {joined}
-    {lap_car(height)}
+    {race_cars(height)}
     <polygon points="0,{height} 520,{height} 556,{height - 18} 0,{height - 18}" fill="{RED}" filter="url(#glow)"/>
     <polygon points="562,{height - 18} 586,{height - 18} 550,{height} 526,{height}" fill="{YEL}" filter="url(#glow)"/>
   </g>
