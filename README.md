@@ -1,1 +1,1 @@
-<img src="https://raw.githubusercontent.com/rithika-IO/rithika-IO/output/profile.svg?v=3" alt="Rithika Mandiv, number 33: F1-themed profile with driver card, car setup, garage tech stack, timing tower metrics, team radio and race track contribution activity" width="100%" />
+<img src="https://raw.githubusercontent.com/rithika-IO/rithika-IO/output/profile.svg?v=4" alt="Rithika Mandiv, number 33: F1-themed profile with driver card, car setup, garage tech stack, timing tower metrics, team radio and race track contribution activity" width="100%" />
