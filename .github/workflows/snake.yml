@@ -4,12 +4,13 @@ on:
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:
-  # Rebuild straight away when the workflow or the panel script changes.
+  # Rebuild straight away when the workflow, the script or its content changes.
   push:
     branches: [main]
     paths:
       - ".github/workflows/snake.yml"
       - "scripts/**"
+      - "assets/banner.png"
 
 permissions:
   contents: write
@@ -20,27 +21,26 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      # Needed so the runner has scripts/build_panels.py.
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # The snake is the "car" on the Race Track section: yellow car, red/navy track.
+      # github.repository_owner always matches the current username, so a rename cannot break it again.
       - name: Generate Snake
         uses: Platane/snk/svg-only@v3
         with:
-          # Always the current repo owner, so a username change never breaks this.
           github_user_name: ${{ github.repository_owner }}
           outputs: |
             dist/github-snake.svg
-            dist/github-snake-dark.svg?color_snake=#5EEAD4&color_dots=#1A1530,#3B1D5E,#6D28A8,#C026D3,#F472B6
+            dist/github-snake-dark.svg?color_snake=#FFE600&color_dots=#0E1638,#3A1240,#8A1240,#D81E50,#FF1E56
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Draws dist/metrics.svg and dist/activity.svg (themed panels).
+      # Draws dist/profile.svg (the whole F1-themed panel).
       - name: Build themed panels
         run: python3 scripts/build_panels.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Same source as above, read by the script as its GraphQL login.
           GH_USER: ${{ github.repository_owner }}
           OUT_DIR: dist
 

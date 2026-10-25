@@ -1,5 +1,5 @@
 {
- "_readme": "Content for the profile panel. text_width is the label width in pixels at 16px bold; leave it out for a new item and the script estimates it. icon is an SVG path on a 24x24 grid (from simpleicons.org); use null for a plain diamond. intro_lines are the intro paragraph already split into lines of at most about 110 characters.",
+ "_readme": "Content for the profile panel. text_width is the label width in pixels at 16px bold; leave it out for a new item and the script estimates it. icon is an SVG path on a 24x24 grid (from simpleicons.org); use null for a plain diamond. intro_lines are the intro paragraph already split into lines. radio_messages rotate on the Team Radio card.",
  "profile": {
   "name": "RITHIKA MANDIV",
   "roles": [
@@ -13,7 +13,8 @@
    "Software Engineering undergraduate focused on designing and building practical, end-to-end software systems. I",
    "focus on understanding the engineering behind the systems I build, with an emphasis on maintainable",
    "architecture, clean code, and solving real-world problems."
-  ]
+  ],
+  "race_number": 33
  },
  "capabilities": [
   {
@@ -339,5 +340,13 @@
     }
    ]
   }
+ ],
+ "radio_messages": [
+  "Box, box. Merge conflict on main.",
+  "Tests are green. All green. Push now, push now.",
+  "Copy, we're seeing a flaky test in sector 2. Stay out.",
+  "PostgreSQL is using the index. Pace is good.",
+  "Don't deploy on Friday. Do not deploy on Friday.",
+  "Box this lap. Coffee is ready."
  ]
 }
