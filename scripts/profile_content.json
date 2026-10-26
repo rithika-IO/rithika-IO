@@ -13,12 +13,9 @@
   "quote_lines": [
    "“Fast is good. Reliable is faster.”"
   ],
-  "card_name": [
-   "Rithika",
-   "Mandiv"
-  ],
-  "card_tag": "#33 · BACKEND / FULL-STACK",
-  "card_line": "COLOMBO, SRI LANKA · SEASON 2026"
+  "card_role": "Backend Engineer",
+  "card_sub": "Software Engineering Undergraduate",
+  "card_image": "assets/car-sketch.jpg"
  },
  "tech_stack": [
   {

@@ -19,6 +19,7 @@ Inputs
     GH_USER                       GitHub login to read statistics for
     OUT_DIR                       folder holding github-snake-dark.svg; output goes here
     scripts/profile_content.json  name, quote, driver status, trophies, tech stack and radio messages
+    assets/car-sketch.jpg         picture shown in the card under the name
 
 Output
     OUT_DIR/profile.svg
@@ -27,6 +28,7 @@ Only the Python standard library is used, so the workflow needs no install step.
 """
 from __future__ import annotations
 
+import base64
 import datetime as dt
 import json
 import os
@@ -328,58 +330,31 @@ def pill_width(item: dict, padding: int) -> int:
 # Sections. Each returns (svg, height), drawn from y = 0.
 # --------------------------------------------------------------------------
 def name_card(profile: dict, x: float, y: float, w: float, h: float) -> str:
-    """Grid intro card, like the driver introductions on F1 broadcasts.
+    """Picture card: the car sketch fills the card, and the role sits on the empty paper above the car.
 
-    Layers, back to front: navy panel, slanted darker panel, chequered corner,
-    red and yellow speed stripes, huge italic race number, stacked name,
-    info tag, and five start lights that light up one by one and then go out.
+    An SVG shown as an image cannot load a separate picture file, so the
+    picture is read from the repository and embedded as text (a base64 "data URI").
     """
-    number = str(profile["race_number"])
-    first, last = profile["card_name"]
-    chk = "".join(f'<rect x="{x + w - 16 - c * 16}" y="{y + h - 26 - r * 16}" width="16" height="16" fill="{WHITE}" opacity="{0.5 - c * 0.045:.2f}"/>'
-                  for c in range(11) for r in range(5) if (c + r) % 2 == 0)
-    stripes = "".join(
-        f'<polygon points="{x + w - 250 + i * 40},{y + h} {x + w - 130 + i * 40},{y} {x + w - 116 + i * 40},{y} {x + w - 236 + i * 40},{y + h}" fill="{c}" opacity="0.9"/>'
-        for i, c in enumerate([RED, RED, YELLOW]))
-    # start lights: each light turns red in turn, then all go out together ("lights out")
-    lights, cycle = [], 8
-    for i in range(5):
-        lx = x + w - 270 + i * 46
-        on, out = (i + 1) / cycle, 6 / cycle
-        lights.append(
-            f'<rect x="{lx - 17}" y="{y + 26}" width="34" height="74" rx="7" fill="#0B0B0D"/>'
-            f'<circle cx="{lx}" cy="{y + 46}" r="11" fill="#2A2A30"/>'
-            f'<circle cx="{lx}" cy="{y + 80}" r="11" fill="#2A2A30"/>'
-            f'<circle cx="{lx}" cy="{y + 80}" r="11" fill="{RED}" opacity="0">'
-            f'<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;{on - 0.001:.3f};{on:.3f};{out:.3f};{out + 0.001:.3f};1" dur="{cycle}s" repeatCount="indefinite"/></circle>')
+    picture = Path(__file__).resolve().parent.parent / profile["card_image"]
+    encoded = base64.b64encode(picture.read_bytes()).decode()
+    outline = f'stroke="{INK}" stroke-width="3" paint-order="stroke" stroke-linejoin="round"'
     return f'''<g>
-      <rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{NAVY}"/>
-      <polygon points="{x},{y} {x + 400},{y} {x + 300},{y + h} {x},{y + h}" fill="#1A2654"/>
-      {chk}
-      {stripes}
-      {"".join(lights)}
-      {text(x + w - 178, y + 122, "LIGHTS OUT", 11, CAN, 800, "middle", MONO, 'letter-spacing="4" opacity="0.7"')}
-      <rect x="{x}" y="{y + h - 10}" width="{w}" height="10" fill="{RED}"/><rect x="{x + w * 0.62}" y="{y + h - 10}" width="{w * 0.38}" height="10" fill="{YELLOW}"/>
-      <text x="{x + 36}" y="{y + h - 74}" font-family="{BLACK_SANS}" font-weight="900" font-style="italic" font-size="255" fill="{RED}">{number}</text>
-      <text x="{x + 24}" y="{y + h - 84}" font-family="{BLACK_SANS}" font-weight="900" font-style="italic" font-size="255" fill="{WHITE}">{number}</text>
-      {text(x + 400, y + 170, first.upper(), 52, CAN, 900, family=BLACK_SANS, extra='font-style="italic" letter-spacing="3"')}
-      {text(x + 392, y + 268, last.upper(), 110, YELLOW, 900, family=BLACK_SANS, extra='font-style="italic" letter-spacing="-2"')}
-      <g transform="translate({x + 400},{y + 296}) skewX(-14)"><rect width="420" height="38" fill="{RED}"/>
-        <text x="18" y="26" font-family="{MONO}" font-weight="800" font-size="15" letter-spacing="2" fill="{WHITE}">{esc(profile["card_tag"])}</text></g>
-      {text(x + 400, y + 368, profile["card_line"], 15, CAN, 600, family=MONO, extra='letter-spacing="3"')}
+      <image x="{x}" y="{y}" width="{w}" height="{h}" preserveAspectRatio="xMidYMid slice" href="data:image/jpeg;base64,{encoded}"/>
+      <rect x="{x}" y="{y}" width="{w}" height="{h}" fill="none" stroke="{INK}" stroke-width="2"/>
+      {text(x + 40, y + 84, profile["card_role"].upper(), 62, YELLOW, 900, family=BLACK_SANS, extra=f'font-style="italic" letter-spacing="1" {outline}')}
+      {text(x + 44, y + 118, profile["card_sub"].upper(), 14, INK, 800, family=MONO, extra='letter-spacing="4"')}
+      <rect x="{x + 44}" y="{y + 130}" width="70" height="4" fill="{RED}"/><rect x="{x + 118}" y="{y + 130}" width="24" height="4" fill="{YELLOW}"/>
     </g>'''
 
 
 def poster_top(profile: dict, streaks: dict, stats: dict) -> tuple[str, int]:
-    """The poster: number, names, grid intro card, quote, emblem rule and stats bar."""
+    """The poster: names, picture card, quote, emblem rule and stats bar."""
     parts = [
-        text(W - MARGIN, 78, f'/{profile["race_number"]}', 34, INK, 400, "end", POSTER_SERIF),
         text(MARGIN, 150, profile["first_name"], 46, INK, 400, family=POSTER_SERIF),
         text(MARGIN - 6, 300, profile["last_name"].upper(), 178, INK, 900, family=BLACK_SANS, extra='letter-spacing="-5"'),
-        text(MARGIN, 340, "  ·  ".join(r.upper() for r in profile["roles"]), 14, MUTED, 700, family=MONO, extra='letter-spacing="2"'),
     ]
-    # F1 grid intro card (replaces the photo on the original poster)
-    by, bh_box = 368, 420
+    # picture card (the car sketch, with the role on top)
+    by, bh_box = 344, 480
     parts.append(name_card(profile, MARGIN, by, INNER, bh_box))
     # quote and emblem rule
     qy = by + bh_box + 58
