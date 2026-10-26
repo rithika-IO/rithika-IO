@@ -9,12 +9,22 @@
   "banner": "assets/banner.png",
   "banner_width": 1120,
   "banner_height": 382,
-  "intro_lines": [
-   "Software Engineering undergraduate focused on designing and building practical, end-to-end software systems. I",
-   "focus on understanding the engineering behind the systems I build, with an emphasis on maintainable",
-   "architecture, clean code, and solving real-world problems."
+  "race_number": 33,
+  "first_name": "Rithika",
+  "last_name": "Mandiv",
+  "signature": "R. Mandiv",
+  "monogram": "RM",
+  "quote_lines": [
+   "“Fast is good. Reliable is faster.”"
   ],
-  "race_number": 33
+  "bio_lines": [
+   "Software Engineering undergraduate focused on",
+   "designing and building practical, end-to-end",
+   "software systems. I focus on understanding the",
+   "engineering behind the systems I build, with an",
+   "emphasis on maintainable architecture, clean code,",
+   "and solving real-world problems."
+  ]
  },
  "capabilities": [
   {

@@ -24,7 +24,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # The snake is the "car" on the Race Track section: yellow car, red/navy track.
+      # The snake is drawn on the Race Track section of the poster: red snake, grey-to-navy dots.
       # github.repository_owner always matches the current username, so a rename cannot break it again.
       - name: Generate Snake
         uses: Platane/snk/svg-only@v3
@@ -32,11 +32,11 @@ jobs:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
             dist/github-snake.svg
-            dist/github-snake-dark.svg?color_snake=#FFE600&color_dots=#0E1638,#3A1240,#8A1240,#D81E50,#FF1E56
+            dist/github-snake-dark.svg?color_snake=#DB0B44&color_dots=#DEDBD3,#9AA6C8,#5B6BA8,#233268,#DB0B44
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Draws dist/profile.svg (the whole F1-themed panel).
+      # Draws dist/profile.svg (the whole F1 poster, including live F1 standings).
       - name: Build themed panels
         run: python3 scripts/build_panels.py
         env:
