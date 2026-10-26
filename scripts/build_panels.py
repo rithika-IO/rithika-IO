@@ -348,8 +348,9 @@ def name_card(profile: dict, x: float, y: float, w: float, h: float) -> str:
 
 
 def poster_top(profile: dict, streaks: dict, stats: dict) -> tuple[str, int]:
-    """The poster: names, picture card, quote, emblem rule and stats bar."""
+    """The poster: number, names, picture card, quote, emblem rule and stats bar."""
     parts = [
+        text(W - MARGIN, 78, f'/{profile["race_number"]}', 34, INK, 400, "end", POSTER_SERIF),
         text(MARGIN, 150, profile["first_name"], 46, INK, 400, family=POSTER_SERIF),
         text(MARGIN - 6, 300, profile["last_name"].upper(), 178, INK, 900, family=BLACK_SANS, extra='letter-spacing="-5"'),
     ]
