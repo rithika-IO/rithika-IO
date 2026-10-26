@@ -1,1 +1,1 @@
-<img src="https://raw.githubusercontent.com/rithika-IO/rithika-IO/output/profile.svg?v=10" alt="Rithika Mandiv, number 33: F1 poster-style profile with sector times, speed trace, timing tower, tyre strategy tech stack, live F1 standings and contribution race track" width="100%" />
+<img src="https://raw.githubusercontent.com/rithika-IO/rithika-IO/output/profile.svg?v=11" alt="Rithika Mandiv, number 33: F1 poster-style profile with sector times, speed trace, timing tower, tyre strategy tech stack, live F1 standings and contribution race track" width="100%" />
