@@ -241,12 +241,16 @@ def rank(stats: dict) -> tuple[str, float]:
 # Theme: F1 poster (light editorial poster + F1 data graphics)
 # --------------------------------------------------------------------------
 # Colours: Red Bull palette (colours only; no logos or team names are drawn)
-PAPER, PAPER2, INK, MUTED, RULE = "#ECEBE7", "#E2E0DA", "#111111", "#6B6B6B", "#C9C7C1"
-NAVY, RED, YELLOW, BLUE, CAN = "#233268", "#DB0B44", "#FFD200", "#1D19AF", "#F4ECEF"
+PAPER, PAPER2, INK, MUTED, RULE = "#E6DFCD", "#DAD1BB", "#111111", "#5E584C", "#BDB49F"
+CARD_BG = "#F2EDE1"                               # light cards that sit on the aged paper
+NAVY, BLUE, CAN = "#233268", "#1D19AF", "#F4ECEF"
+RED, YELLOW = "#B8343F", "#D9B13B"                # team red and yellow, aged slightly to suit the paper
 WHITE = "#FFFFFF"
+PANEL = "#2A251F"                                 # sepia charcoal for the dark panels, like the sketch ink
+PANEL_AGEING = 0.4                                # how strongly the paper stains show through the dark panels
 PURPLE, GREEN = "#9B30FF", "#00A651"            # F1 timing colours: fastest / personal best
 TYRES = [  # (letter, colour) in the order the tech-stack rows use them
-    ("S", "#DB0B44"), ("M", "#FFD200"), ("H", "#FFFFFF"), ("I", "#43B047"), ("W", "#0067AD"), ("S", "#DB0B44"), ("M", "#FFD200"),
+    ("S", "#B8343F"), ("M", "#D9B13B"), ("H", "#FFFFFF"), ("I", "#43B047"), ("W", "#0067AD"), ("S", "#B8343F"), ("M", "#D9B13B"),
 ]
 POSTER_SERIF = "Georgia,'Times New Roman',serif"
 BLACK_SANS = "'Helvetica Neue','Arial Black',Arial,sans-serif"
@@ -304,6 +308,15 @@ def ink_safe(colour: str) -> str:
     return INK if (0.299 * r + 0.587 * g + 0.114 * b) > 200 else colour
 
 
+def panel(x: float, y: float, w: float, h: float, rx: float = 0) -> str:
+    """A dark panel, optionally aged with the same stain texture as the paper so it blends in."""
+    out = f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" fill="{PANEL}"/>'
+    if PANEL_AGEING:
+        out += (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" filter="url(#stains)" opacity="{PANEL_AGEING}"/>'
+                f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" filter="url(#grain)" opacity="{PANEL_AGEING}"/>')
+    return out
+
+
 def section_header(title: str) -> str:
     """Editorial header: thick black rule with a red start, and a bold title."""
     return (f'<rect x="{MARGIN}" y="0" width="{INNER}" height="4" fill="{INK}"/>'
@@ -339,8 +352,8 @@ def name_card(profile: dict, x: float, y: float, w: float, h: float) -> str:
     encoded = base64.b64encode(picture.read_bytes()).decode()
     outline = f'stroke="{INK}" stroke-width="3" paint-order="stroke" stroke-linejoin="round"'
     return f'''<g>
-      <image x="{x}" y="{y}" width="{w}" height="{h}" preserveAspectRatio="xMidYMid slice" href="data:image/jpeg;base64,{encoded}"/>
-      <rect x="{x}" y="{y}" width="{w}" height="{h}" fill="none" stroke="{INK}" stroke-width="2"/>
+      <mask id="cardfade"><rect x="{x + 26}" y="{y + 26}" width="{w - 52}" height="{h - 52}" fill="white" filter="url(#soft)"/></mask>
+      <image x="{x}" y="{y}" width="{w}" height="{h}" preserveAspectRatio="xMidYMid slice" mask="url(#cardfade)" href="data:image/jpeg;base64,{encoded}"/>
       {text(x + 40, y + 84, profile["card_role"].upper(), 62, YELLOW, 900, family=BLACK_SANS, extra=f'font-style="italic" letter-spacing="1" {outline}')}
       {text(x + 44, y + 118, profile["card_sub"].upper(), 14, INK, 800, family=MONO, extra='letter-spacing="4"')}
       <rect x="{x + 44}" y="{y + 130}" width="70" height="4" fill="{RED}"/><rect x="{x + 118}" y="{y + 130}" width="24" height="4" fill="{YELLOW}"/>
@@ -397,7 +410,7 @@ def sector_section(streaks: dict, today: dt.date) -> tuple[str, int]:
     for i, (sector, label, value, sub, colour) in enumerate(cells):
         x = MARGIN + i * (cw + gap)
         parts += [
-            f'<rect x="{x:.1f}" y="{y}" width="{cw:.1f}" height="130" fill="{WHITE}" stroke="{RULE}"/>',
+            f'<rect x="{x:.1f}" y="{y}" width="{cw:.1f}" height="130" fill="{CARD_BG}" stroke="{RULE}"/>',
             f'<rect x="{x:.1f}" y="{y}" width="{cw:.1f}" height="8" fill="{colour}"/>',
             text(x + 20, y + 38, sector, 14, MUTED, 800, family=MONO),
             text(x + 20, y + 84, value, 38, INK, 900, family=BLACK_SANS),
@@ -457,7 +470,7 @@ def tower_section(stats: dict) -> tuple[str, int]:
         y = y0 + i * row
         interval = "LEADER" if i == 0 else f'+{langs[i - 1]["percent"] - lang["percent"]:.1f}%'
         parts += [
-            f'<rect x="{MARGIN}" y="{y}" width="560" height="{row - 4}" fill="{WHITE if i % 2 == 0 else PAPER2}"/>',
+            f'<rect x="{MARGIN}" y="{y}" width="560" height="{row - 4}" fill="{CARD_BG if i % 2 == 0 else PAPER2}"/>',
             f'<rect x="{MARGIN}" y="{y}" width="36" height="{row - 4}" fill="{INK}"/>',
             text(MARGIN + 18, y + 21, i + 1, 15, WHITE, 900, "middle"),
             f'<rect x="{MARGIN + 44}" y="{y + 5}" width="5" height="{row - 14}" fill="{lang["color"]}"/>',
@@ -469,7 +482,7 @@ def tower_section(stats: dict) -> tuple[str, int]:
     cx, cw = MARGIN + 600, INNER - 600
     ch = row * len(langs) - 4
     grade, percentile = rank(stats)
-    parts.append(f'<rect x="{cx}" y="{y0}" width="{cw}" height="{ch}" fill="{NAVY}"/>')
+    parts.append(panel(cx, y0, cw, ch))
     parts.append(text(cx + 24, y0 + 36, "CAR TELEMETRY", 13, YELLOW, 800, family=MONO, extra='letter-spacing="3"'))
     rows = [("Stars earned", stats["stars"]), ("Commits", stats["commits"]), ("Pull requests", stats["prs"]),
             ("Issues", stats["issues"]), ("Contributed to (last year)", stats["contributed_to"])]
@@ -509,7 +522,7 @@ def strategy_section(categories: list[dict]) -> tuple[str, int]:
             icon = (f'<path d="{item["icon"]}" fill="{ink_safe(item.get("colour", INK))}" transform="translate({x + 10:.1f},{y + 13}) scale({16 / 24})"/>'
                     if item.get("icon") else f'<rect x="{x + 13:.1f}" y="{y + 16}" width="10" height="10" fill="{item.get("colour", INK)}" transform="rotate(45 {x + 18:.1f} {y + 21})"/>')
             parts += [
-                f'<rect x="{x:.1f}" y="{y + 4}" width="{w - 3:.1f}" height="34" fill="{WHITE}" stroke="{RULE}"/>',
+                f'<rect x="{x:.1f}" y="{y + 4}" width="{w - 3:.1f}" height="34" fill="{CARD_BG}" stroke="{RULE}"/>',
                 f'<rect x="{x:.1f}" y="{y + 4}" width="{w - 3:.1f}" height="5" fill="{stripe}"/>',
                 icon,
                 f'<text x="{x + 32:.1f}" y="{y + 30}" font-family="{SANS}" font-weight="700" font-size="13" fill="{INK}" '
@@ -529,7 +542,7 @@ def radio_section(messages: list[str]) -> tuple[str, int]:
     cycle = hold * len(messages)
     share = 1 / len(messages)
     parts += [
-        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{NAVY}"/>',
+        panel(x, y, w, h),
         f'<rect x="{x}" y="{y}" width="8" height="{h}" fill="{RED}"/>',
         text(x + 30, y + 30, "RACE ENGINEER", 12, YELLOW, 800, family=MONO, extra='letter-spacing="3"'),
         f'<circle cx="{x + w - 70}" cy="{y + 26}" r="6" fill="{RED}"><animate attributeName="opacity" values="1;0.2;1" dur="1.2s" repeatCount="indefinite"/></circle>',
@@ -623,7 +636,7 @@ def status_section(status: dict) -> tuple[str, int]:
         body.append(text(left + 150, ry, name, 15, WHITE, 900, family=MONO))
         body.append(text(left + 150 + len(name) * 9.4 + 14, ry, f"— {desc}", 14, LIGHT, 500, family=MONO))
     panel_h = my + 46 + 34 * len(status["modes"]) + 10 - top
-    parts.append(f'<rect x="{MARGIN}" y="{top}" width="{INNER}" height="{panel_h}" rx="8" fill="{NAVY}"/>')
+    parts.append(panel(MARGIN, top, INNER, panel_h, 8))
     parts.append(f'<rect x="{MARGIN}" y="{top}" width="8" height="{panel_h}" fill="{RED}"/>')
     parts += body
     return "\n    ".join(parts), top + panel_h + 30
@@ -654,7 +667,7 @@ def trophy_section(trophies: list[dict]) -> tuple[str, int]:
         parts += [
             f'<polygon points="{outer}" fill="none" stroke="{t["colour"]}" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.7">'
             f'<animateTransform attributeName="transform" type="rotate" from="0 {cx:.1f} {cy}" to="360 {cx:.1f} {cy}" dur="30s" repeatCount="indefinite"/></polygon>',
-            f'<polygon points="{hexagon}" fill="{NAVY}" stroke="{t["colour"]}" stroke-width="4" filter="url(#glow)"/>',
+            f'<polygon points="{hexagon}" fill="{PANEL}" stroke="{t["colour"]}" stroke-width="4" filter="url(#glow)"/>',
             f'<path d="{TROPHY_ICONS[t["icon"]]}" fill="none" stroke="{WHITE}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
             f'transform="translate({cx - 24:.1f},{cy - 24}) scale(2)"/>',
             text(cx, cy + 102, t["name"], 16, INK, 900, "middle"),
@@ -693,6 +706,81 @@ def speed_lines(height: int) -> str:
         dur = rng.uniform(1.6, 3.2)
         out.append(f'<rect x="-400" y="{y:.0f}" width="{width:.0f}" height="2" rx="1" fill="{colour}" opacity="{rng.uniform(0.18, 0.35):.2f}">'
                    f'<animate attributeName="x" from="-400" to="{W + 50}" dur="{dur:.1f}s" begin="-{rng.uniform(0, dur):.1f}s" repeatCount="indefinite"/></rect>')
+    return "\n    ".join(out)
+
+
+def paper_defs(height: int) -> str:
+    """Filters and gradients for the aged-paper background.
+
+    feTurbulence makes random cloud-like noise. Low-frequency noise becomes the
+    grey-brown stains, high-frequency noise becomes the fine paper grain, and a
+    radial gradient darkens the edges like old, smoky paper.
+    """
+    return f'''<filter id="stains" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="4" seed="33" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.36  0 0 0 0 0.31  0 0 0 0 0.24  0 0 0 -2.6 1.45"/>
+    </filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="g"/>
+      <feColorMatrix in="g" type="matrix" values="0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 0 0.15  0 0 0 0.9 -0.35"/>
+    </filter>
+    <filter id="soft" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="22"/></filter>
+    <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.75">
+      <stop offset="0.55" stop-color="#3B2F22" stop-opacity="0"/>
+      <stop offset="1" stop-color="#3B2F22" stop-opacity="0.55"/>
+    </radialGradient>'''
+
+
+def aged_paper(width: int, height: int) -> str:
+    """Base paper tone, stains, grain and smoky edges, stacked in that order."""
+    return (f'<rect x="18" y="18" width="{width}" height="{height}" fill="{PAPER}"/>'
+            f'<rect x="18" y="18" width="{width}" height="{height}" filter="url(#stains)" opacity="0.55"/>'
+            f'<rect x="18" y="18" width="{width}" height="{height}" filter="url(#grain)" opacity="0.5"/>'
+            f'<rect x="18" y="18" width="{width}" height="{height}" fill="url(#vignette)"/>')
+
+
+def drafting_lines(height: int) -> str:
+    """Faint technical-drawing marks across the sheet, like an engineer's working drawing.
+
+    Long construction lines, circles with crosshairs, dimension lines with arrows,
+    tick marks and small handwritten-looking measurements. A fixed seed keeps the
+    pattern identical between runs.
+    """
+    rng = random.Random(1033)
+    ink = f'stroke="{INK}" fill="none"'
+    out = []
+    for _ in range(max(10, height // 260)):                        # long construction lines
+        if rng.random() < 0.6:
+            y = rng.uniform(30, height - 30)
+            x1 = rng.uniform(18, 400); x2 = rng.uniform(800, W - 18)
+            out.append(f'<line x1="{x1:.0f}" y1="{y:.0f}" x2="{x2:.0f}" y2="{y:.0f}" {ink} stroke-width="0.8" opacity="{rng.uniform(0.12, 0.25):.2f}"/>')
+        else:
+            x = rng.uniform(30, W - 30)
+            y1 = rng.uniform(18, height - 600); y2 = y1 + rng.uniform(250, 600)
+            out.append(f'<line x1="{x:.0f}" y1="{y1:.0f}" x2="{x:.0f}" y2="{y2:.0f}" {ink} stroke-width="0.8" opacity="{rng.uniform(0.12, 0.25):.2f}"/>')
+    for _ in range(max(6, height // 600)):                         # circles with crosshairs
+        cx = rng.choice([rng.uniform(40, 140), rng.uniform(W - 140, W - 40), rng.uniform(140, W - 140)])
+        cy = rng.uniform(80, height - 80)
+        r = rng.uniform(22, 70)
+        op = rng.uniform(0.14, 0.26)
+        out.append(f'<g opacity="{op:.2f}"><circle cx="{cx:.0f}" cy="{cy:.0f}" r="{r:.0f}" {ink} stroke-width="0.9"/>'
+                   f'<circle cx="{cx:.0f}" cy="{cy:.0f}" r="{r * 0.55:.0f}" {ink} stroke-width="0.7" stroke-dasharray="3 4"/>'
+                   f'<line x1="{cx - r * 1.4:.0f}" y1="{cy:.0f}" x2="{cx + r * 1.4:.0f}" y2="{cy:.0f}" {ink} stroke-width="0.7"/>'
+                   f'<line x1="{cx:.0f}" y1="{cy - r * 1.4:.0f}" x2="{cx:.0f}" y2="{cy + r * 1.4:.0f}" {ink} stroke-width="0.7"/></g>')
+    for _ in range(max(6, height // 500)):                         # dimension lines with arrows and a measurement
+        y = rng.uniform(60, height - 60)
+        x1 = rng.uniform(30, W / 2); x2 = x1 + rng.uniform(120, 360)
+        op = rng.uniform(0.18, 0.3)
+        out.append(f'<g opacity="{op:.2f}"><path d="M{x1:.0f},{y - 7:.0f} V{y + 7:.0f} M{x2:.0f},{y - 7:.0f} V{y + 7:.0f} M{x1:.0f},{y:.0f} H{x2:.0f}" {ink} stroke-width="0.8"/>'
+                   f'<path d="M{x1 + 7:.0f},{y - 3:.0f} L{x1:.0f},{y:.0f} L{x1 + 7:.0f},{y + 3:.0f} M{x2 - 7:.0f},{y - 3:.0f} L{x2:.0f},{y:.0f} L{x2 - 7:.0f},{y + 3:.0f}" {ink} stroke-width="0.8"/>'
+                   f'<text x="{(x1 + x2) / 2:.0f}" y="{y - 5:.0f}" text-anchor="middle" font-family="\'Courier New\',monospace" font-size="10" '
+                   f'font-style="italic" fill="{INK}">{rng.choice(["R 340", "Ø 120", "12.5", "3600", "H 950", "A-A", "2000", "45°", "1:25"])}</text></g>')
+    for _ in range(max(12, height // 200)):                        # small tick clusters and handwritten notes
+        x = rng.uniform(24, W - 60); y = rng.uniform(30, height - 30)
+        op = rng.uniform(0.15, 0.28)
+        ticks = "".join(f'<line x1="{x + i * 5:.0f}" y1="{y:.0f}" x2="{x + i * 5:.0f}" y2="{y + (6 if i % 5 else 11):.0f}" {ink} stroke-width="0.7"/>' for i in range(rng.randint(6, 14)))
+        note = rng.choice(["fig. 3", "sect. B", "ref 7", "tol ±0.2", "detail C", "scale 1:10", "v2", "rev. 4"])
+        out.append(f'<g opacity="{op:.2f}">{ticks}<text x="{x:.0f}" y="{y - 4:.0f}" font-family="\'Courier New\',monospace" font-size="10" font-style="italic" fill="{INK}">{note}</text></g>')
     return "\n    ".join(out)
 
 
@@ -740,13 +828,17 @@ def build_profile(content: dict, days: dict, streaks: dict, stats: dict, snake_s
   <title>{esc(label)}</title>
   <style>@media (prefers-reduced-motion: reduce) {{ .fx {{ display: none; }} }}</style>
   <defs>
+    {paper_defs(height)}
     <linearGradient id="perf" x1="0" x2="1"><stop offset="0" stop-color="{YELLOW}"/><stop offset="1" stop-color="{RED}"/></linearGradient>
     <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <clipPath id="paper"><rect x="18" y="18" width="{W - 36}" height="{paper_h}"/></clipPath>
   </defs>
   <rect width="{W}" height="{height}" rx="6" fill="#1A1A1A"/>
-  <rect x="18" y="18" width="{W - 36}" height="{paper_h}" fill="{PAPER}"/>
+  {aged_paper(W - 36, paper_h)}
   <g clip-path="url(#paper)">
+    <g>
+    {drafting_lines(height)}
+    </g>
     <g class="fx">
     {speed_lines(height)}
     </g>

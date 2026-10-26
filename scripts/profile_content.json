@@ -353,13 +353,13 @@
     "FUEL",
     1.0,
     "∞ · coffee-powered",
-    "#DB0B44"
+    "#B8343F"
    ],
    [
     "ERS",
     0.88,
     "9000+ · deep focus",
-    "#FFD200"
+    "#D9B13B"
    ]
   ],
   "performance": [
@@ -417,7 +417,7 @@
    "name": "Pole Position",
    "tech": "Java · Spring Boot",
    "icon": "trophy",
-   "colour": "#FFD200"
+   "colour": "#D9B13B"
   },
   {
    "name": "Fastest Lap",
@@ -441,7 +441,7 @@
    "name": "Full-Stack Finisher",
    "tech": "React · TS · Node.js",
    "icon": "flag",
-   "colour": "#DB0B44"
+   "colour": "#B8343F"
   },
   {
    "name": "Night Race Specialist",
