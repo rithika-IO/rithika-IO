@@ -6,56 +6,20 @@
    "Software Engineering Undergraduate",
    "Full-Stack Developer"
   ],
-  "banner": "assets/banner.png",
-  "banner_width": 1120,
-  "banner_height": 382,
   "race_number": 33,
   "first_name": "Rithika",
   "last_name": "Mandiv",
-  "signature": "R. Mandiv",
   "monogram": "RM",
   "quote_lines": [
    "“Fast is good. Reliable is faster.”"
   ],
-  "bio_lines": [
-   "Software Engineering undergraduate focused on",
-   "designing and building practical, end-to-end",
-   "software systems. I focus on understanding the",
-   "engineering behind the systems I build, with an",
-   "emphasis on maintainable architecture, clean code,",
-   "and solving real-world problems."
-  ]
+  "card_name": [
+   "Rithika",
+   "Mandiv"
+  ],
+  "card_tag": "#33 · BACKEND / FULL-STACK",
+  "card_line": "COLOMBO, SRI LANKA · SEASON 2026"
  },
- "capabilities": [
-  {
-   "label": "Full-Stack Development",
-   "text_width": 193
-  },
-  {
-   "label": "Backend Development",
-   "text_width": 182
-  },
-  {
-   "label": "REST API Development",
-   "text_width": 186
-  },
-  {
-   "label": "Database Systems",
-   "text_width": 150
-  },
-  {
-   "label": "Object-Oriented Programming",
-   "text_width": 245
-  },
-  {
-   "label": "Cloud & Infrastructure",
-   "text_width": 183
-  },
-  {
-   "label": "Machine Learning",
-   "text_width": 144
-  }
- ],
  "tech_stack": [
   {
    "category": "Programming Languages",
@@ -358,5 +322,135 @@
   "PostgreSQL is using the index. Pace is good.",
   "Don't deploy on Friday. Do not deploy on Friday.",
   "Box this lap. Coffee is ready."
+ ],
+ "status": {
+  "banner_message": "Lights out. Daily target → ship reliable, well-tested code.",
+  "driver": [
+   [
+    "NAME",
+    "Rithika Mandiv"
+   ],
+   [
+    "NUMBER",
+    "#33"
+   ],
+   [
+    "ROLE",
+    "Backend / Full-Stack Developer"
+   ],
+   [
+    "CLASS",
+    "Software Engineering Undergraduate"
+   ],
+   [
+    "REGION",
+    "Colombo, Sri Lanka"
+   ],
+   [
+    "SEASON",
+    "2026"
+   ]
+  ],
+  "gauges": [
+   [
+    "FUEL",
+    1.0,
+    "∞ · coffee-powered",
+    "#DB0B44"
+   ],
+   [
+    "ERS",
+    0.88,
+    "9000+ · deep focus",
+    "#FFD200"
+   ]
+  ],
+  "performance": [
+   {
+    "area": "Backend",
+    "tech": "Java · Spring Boot · Go · Node.js",
+    "grade": "A"
+   },
+   {
+    "area": "API design",
+    "tech": "REST · FastAPI · Express",
+    "grade": "A"
+   },
+   {
+    "area": "Databases",
+    "tech": "PostgreSQL · Redis · Prisma",
+    "grade": "A-"
+   },
+   {
+    "area": "Frontend",
+    "tech": "React · Next.js · TypeScript",
+    "grade": "B+"
+   },
+   {
+    "area": "Cloud & DevOps",
+    "tech": "Docker · GitHub Actions · Vercel",
+    "grade": "B+"
+   },
+   {
+    "area": "ML & data",
+    "tech": "Python · Pandas · scikit-learn",
+    "grade": "B"
+   }
+  ],
+  "modes": [
+   [
+    "RACE PACE",
+    "Reliability First",
+    "tests, CI and clean shutdowns before speed"
+   ],
+   [
+    "OVERTAKE",
+    "API Engineering",
+    "clear, validated REST contracts"
+   ],
+   [
+    "PUSH LAP",
+    "Systems Thinking",
+    "queues, workers and background jobs"
+   ]
+  ]
+ },
+ "trophies": [
+  {
+   "name": "Pole Position",
+   "tech": "Java · Spring Boot",
+   "icon": "trophy",
+   "colour": "#FFD200"
+  },
+  {
+   "name": "Fastest Lap",
+   "tech": "Go · concurrency",
+   "icon": "stopwatch",
+   "colour": "#9B30FF"
+  },
+  {
+   "name": "Pit Wall Engineer",
+   "tech": "GitHub Actions · CI",
+   "icon": "headset",
+   "colour": "#3D5AFE"
+  },
+  {
+   "name": "Race Strategist",
+   "tech": "Python · Pandas",
+   "icon": "chart",
+   "colour": "#00A651"
+  },
+  {
+   "name": "Full-Stack Finisher",
+   "tech": "React · TS · Node.js",
+   "icon": "flag",
+   "colour": "#DB0B44"
+  },
+  {
+   "name": "Night Race Specialist",
+   "tech": "C# · .NET",
+   "icon": "moon",
+   "colour": "#FF8A00"
+  }
  ]
 }

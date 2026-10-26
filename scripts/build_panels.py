@@ -11,15 +11,14 @@ script instead reads the numbers from the GitHub API, draws every section
 itself, and stacks them inside ONE frame so the profile reads as a single
 continuous panel:
 
-    Poster -> Driver Bio -> Sector Times -> Speed Trace -> Timing Tower -> Tyre Strategy
-    -> Drivers' Championship (live F1 data) -> Team Radio -> Race Track
+    Poster -> Driver Status -> Trophy Cabinet -> Sector Times -> Speed Trace
+    -> Timing Tower -> Tyre Strategy -> Team Radio -> Race Track
 
 Inputs
     GITHUB_TOKEN                  token for the GitHub API (provided by GitHub Actions)
     GH_USER                       GitHub login to read statistics for
     OUT_DIR                       folder holding github-snake-dark.svg; output goes here
-    scripts/profile_content.json  name, intro, capabilities and tech stack entries (edit this to add a technology)
-    assets/banner.png             banner picture shown in the intro
+    scripts/profile_content.json  name, quote, driver status, trophies, tech stack and radio messages
 
 Output
     OUT_DIR/profile.svg
@@ -28,7 +27,6 @@ Only the Python standard library is used, so the workflow needs no install step.
 """
 from __future__ import annotations
 
-import base64
 import datetime as dt
 import json
 import os
@@ -248,14 +246,8 @@ PURPLE, GREEN = "#9B30FF", "#00A651"            # F1 timing colours: fastest / p
 TYRES = [  # (letter, colour) in the order the tech-stack rows use them
     ("S", "#DB0B44"), ("M", "#FFD200"), ("H", "#FFFFFF"), ("I", "#43B047"), ("W", "#0067AD"), ("S", "#DB0B44"), ("M", "#FFD200"),
 ]
-TEAM_COLOURS = {  # constructorId from the F1 API -> team colour (colour only, no logos)
-    "mercedes": "#27F4D2", "ferrari": "#E8002D", "red_bull": "#3671C6", "mclaren": "#FF8000",
-    "aston_martin": "#229971", "alpine": "#FF87BC", "williams": "#64C4FF", "rb": "#6692FF",
-    "sauber": "#52E252", "audi": "#BB0A30", "haas": "#B6BABD", "cadillac": "#AAAAAD",
-}
 POSTER_SERIF = "Georgia,'Times New Roman',serif"
 BLACK_SANS = "'Helvetica Neue','Arial Black',Arial,sans-serif"
-F1_API = "https://api.jolpi.ca/ergast/f1/current/driverStandings.json"
 MARGIN = 60                                       # left and right margin inside the poster
 INNER = W - 2 * MARGIN                            # usable width
 
@@ -263,30 +255,6 @@ INNER = W - 2 * MARGIN                            # usable width
 # --------------------------------------------------------------------------
 # Extra data
 # --------------------------------------------------------------------------
-def fetch_f1_standings() -> dict | None:
-    """Current Formula 1 drivers' championship from the free Jolpica F1 API.
-
-    No GitHub token is sent here: it is only for the GitHub API. If the API is
-    down, the section is simply left out so the rest of the profile still builds.
-    """
-    try:
-        req = urllib.request.Request(F1_API, headers={"User-Agent": f"{LOGIN}-profile-panels"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            table = json.load(resp)["MRData"]["StandingsTable"]["StandingsLists"][0]
-        drivers = []
-        for row in table["DriverStandings"][:10]:
-            team = (row.get("Constructors") or [{}])[-1]
-            drivers.append({
-                "position": int(row["position"]), "code": row["Driver"].get("code") or row["Driver"]["familyName"][:3].upper(),
-                "name": f'{row["Driver"]["givenName"]} {row["Driver"]["familyName"]}', "team": team.get("name", ""),
-                "team_id": team.get("constructorId", ""), "points": float(row["points"]), "wins": int(row["wins"]),
-            })
-        return {"season": table["season"], "round": table["round"], "drivers": drivers}
-    except (urllib.error.URLError, KeyError, IndexError, ValueError) as exc:
-        print("F1 standings unavailable, section skipped:", exc, file=sys.stderr)
-        return None
-
-
 def weekly_contributions(days: dict[dt.date, int], today: dt.date, weeks: int = 26) -> list[dict]:
     """Contributions and active days for each of the last `weeks` weeks (oldest first)."""
     start = today - dt.timedelta(days=7 * weeks - 1)
@@ -334,12 +302,11 @@ def ink_safe(colour: str) -> str:
     return INK if (0.299 * r + 0.587 * g + 0.114 * b) > 200 else colour
 
 
-def section_header(title: str, note: str) -> str:
-    """Editorial header: thick black rule, bold title on the left, small grey note on the right."""
+def section_header(title: str) -> str:
+    """Editorial header: thick black rule with a red start, and a bold title."""
     return (f'<rect x="{MARGIN}" y="0" width="{INNER}" height="4" fill="{INK}"/>'
             f'<rect x="{MARGIN}" y="0" width="90" height="4" fill="{RED}"/>'
-            + text(MARGIN, 44, title.upper(), 30, INK, 900, family=BLACK_SANS, extra='letter-spacing="1"')
-            + text(W - MARGIN, 40, note.upper(), 12, MUTED, 700, "end", MONO, 'letter-spacing="2"'))
+            + text(MARGIN, 44, title.upper(), 30, INK, 900, family=BLACK_SANS, extra='letter-spacing="1"'))
 
 
 HEAD = 76   # height of a section header
@@ -360,31 +327,60 @@ def pill_width(item: dict, padding: int) -> int:
 # --------------------------------------------------------------------------
 # Sections. Each returns (svg, height), drawn from y = 0.
 # --------------------------------------------------------------------------
+def name_card(profile: dict, x: float, y: float, w: float, h: float) -> str:
+    """Grid intro card, like the driver introductions on F1 broadcasts.
+
+    Layers, back to front: navy panel, slanted darker panel, chequered corner,
+    red and yellow speed stripes, huge italic race number, stacked name,
+    info tag, and five start lights that light up one by one and then go out.
+    """
+    number = str(profile["race_number"])
+    first, last = profile["card_name"]
+    chk = "".join(f'<rect x="{x + w - 16 - c * 16}" y="{y + h - 26 - r * 16}" width="16" height="16" fill="{WHITE}" opacity="{0.5 - c * 0.045:.2f}"/>'
+                  for c in range(11) for r in range(5) if (c + r) % 2 == 0)
+    stripes = "".join(
+        f'<polygon points="{x + w - 250 + i * 40},{y + h} {x + w - 130 + i * 40},{y} {x + w - 116 + i * 40},{y} {x + w - 236 + i * 40},{y + h}" fill="{c}" opacity="0.9"/>'
+        for i, c in enumerate([RED, RED, YELLOW]))
+    # start lights: each light turns red in turn, then all go out together ("lights out")
+    lights, cycle = [], 8
+    for i in range(5):
+        lx = x + w - 270 + i * 46
+        on, out = (i + 1) / cycle, 6 / cycle
+        lights.append(
+            f'<rect x="{lx - 17}" y="{y + 26}" width="34" height="74" rx="7" fill="#0B0B0D"/>'
+            f'<circle cx="{lx}" cy="{y + 46}" r="11" fill="#2A2A30"/>'
+            f'<circle cx="{lx}" cy="{y + 80}" r="11" fill="#2A2A30"/>'
+            f'<circle cx="{lx}" cy="{y + 80}" r="11" fill="{RED}" opacity="0">'
+            f'<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;{on - 0.001:.3f};{on:.3f};{out:.3f};{out + 0.001:.3f};1" dur="{cycle}s" repeatCount="indefinite"/></circle>')
+    return f'''<g>
+      <rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{NAVY}"/>
+      <polygon points="{x},{y} {x + 400},{y} {x + 300},{y + h} {x},{y + h}" fill="#1A2654"/>
+      {chk}
+      {stripes}
+      {"".join(lights)}
+      {text(x + w - 178, y + 122, "LIGHTS OUT", 11, CAN, 800, "middle", MONO, 'letter-spacing="4" opacity="0.7"')}
+      <rect x="{x}" y="{y + h - 10}" width="{w}" height="10" fill="{RED}"/><rect x="{x + w * 0.62}" y="{y + h - 10}" width="{w * 0.38}" height="10" fill="{YELLOW}"/>
+      <text x="{x + 36}" y="{y + h - 74}" font-family="{BLACK_SANS}" font-weight="900" font-style="italic" font-size="255" fill="{RED}">{number}</text>
+      <text x="{x + 24}" y="{y + h - 84}" font-family="{BLACK_SANS}" font-weight="900" font-style="italic" font-size="255" fill="{WHITE}">{number}</text>
+      {text(x + 400, y + 170, first.upper(), 52, CAN, 900, family=BLACK_SANS, extra='font-style="italic" letter-spacing="3"')}
+      {text(x + 392, y + 268, last.upper(), 110, YELLOW, 900, family=BLACK_SANS, extra='font-style="italic" letter-spacing="-2"')}
+      <g transform="translate({x + 400},{y + 296}) skewX(-14)"><rect width="420" height="38" fill="{RED}"/>
+        <text x="18" y="26" font-family="{MONO}" font-weight="800" font-size="15" letter-spacing="2" fill="{WHITE}">{esc(profile["card_tag"])}</text></g>
+      {text(x + 400, y + 368, profile["card_line"], 15, CAN, 600, family=MONO, extra='letter-spacing="3"')}
+    </g>'''
+
+
 def poster_top(profile: dict, streaks: dict, stats: dict) -> tuple[str, int]:
-    """The poster: swatches, number, names, picture, quote, emblem rule and stats bar."""
-    banner = Path(__file__).resolve().parent.parent / profile["banner"]
-    encoded = base64.b64encode(banner.read_bytes()).decode()
-    swatches = "".join(f'<rect x="{MARGIN + i * 26}" y="56" width="22" height="22" fill="{c}" stroke="{RULE}"/>'
-                       for i, c in enumerate([WHITE, INK, NAVY, RED, YELLOW]))
+    """The poster: number, names, grid intro card, quote, emblem rule and stats bar."""
     parts = [
-        swatches,
         text(W - MARGIN, 78, f'/{profile["race_number"]}', 34, INK, 400, "end", POSTER_SERIF),
         text(MARGIN, 150, profile["first_name"], 46, INK, 400, family=POSTER_SERIF),
         text(MARGIN - 6, 300, profile["last_name"].upper(), 178, INK, 900, family=BLACK_SANS, extra='letter-spacing="-5"'),
         text(MARGIN, 340, "  ·  ".join(r.upper() for r in profile["roles"]), 14, MUTED, 700, family=MONO, extra='letter-spacing="2"'),
     ]
-    # picture block (dark, like the photo on the poster)
+    # F1 grid intro card (replaces the photo on the original poster)
     by, bh_box = 368, 420
-    iw = INNER - 80
-    ih = round(iw * profile["banner_height"] / profile["banner_width"])
-    parts += [
-        f'<rect x="{MARGIN}" y="{by}" width="{INNER}" height="{bh_box}" fill="{NAVY}"/>',
-        f'<text x="{W - MARGIN - 20}" y="{by + bh_box - 24}" text-anchor="end" font-family="{BLACK_SANS}" font-weight="900" '
-        f'font-size="300" fill="none" stroke="{WHITE}" stroke-opacity="0.10" stroke-width="2">{profile["race_number"]}</text>',
-        f'<image x="{MARGIN + 40}" y="{by + (bh_box - ih) / 2:.0f}" width="{iw}" height="{ih}" href="data:image/png;base64,{encoded}"/>',
-        text(MARGIN + 26, by + 46, profile["signature"], 30, WHITE, 400, family="'Snell Roundhand','Brush Script MT',cursive",
-             extra='font-style="italic" opacity="0.9" transform="rotate(-6 100 400)"'),
-    ]
+    parts.append(name_card(profile, MARGIN, by, INNER, bh_box))
     # quote and emblem rule
     qy = by + bh_box + 58
     for i, line in enumerate(profile["quote_lines"]):
@@ -413,24 +409,9 @@ def poster_top(profile: dict, streaks: dict, stats: dict) -> tuple[str, int]:
     return "\n    ".join(parts), sy + 64 + 64
 
 
-def bio_section(profile: dict, capabilities: list[dict]) -> tuple[str, int]:
-    """Driver bio (intro text) on the left, core capabilities as a setup sheet on the right."""
-    parts = [section_header("Driver Bio", "Core capabilities")]
-    for i, line in enumerate(profile["bio_lines"]):
-        parts.append(text(MARGIN, HEAD + 40 + i * 28, line, 17, INK, 400, family=POSTER_SERIF))
-    x = 700
-    for i, item in enumerate(capabilities):
-        y = HEAD + 30 + i * 34
-        parts.append(f'<rect x="{x}" y="{y - 13}" width="4" height="16" fill="{RED if i % 2 == 0 else NAVY}"/>')
-        parts.append(text(x + 16, y, item["label"], 16, INK, 700))
-        parts.append(f'<rect x="{x + 16}" y="{y + 10}" width="{INNER + MARGIN - x - 16}" height="1" fill="{RULE}"/>')
-    height = max(HEAD + 40 + 28 * len(profile["bio_lines"]), HEAD + 30 + 34 * len(capabilities)) + 30
-    return "\n    ".join(parts), height
-
-
 def sector_section(streaks: dict, today: dt.date) -> tuple[str, int]:
     """Three cells coloured like F1 sector times: yellow, green (personal best), purple (fastest)."""
-    parts = [section_header("Sector Times", "Contribution streaks")]
+    parts = [section_header("Sector Times")]
     cells = [("S1", "Total contributions", f'{streaks["total"]:,}', f'{fmt_date(streaks["first"], today)} - Present', YELLOW),
              ("S2", "Current streak", f'{streaks["current"]["length"]} days', fmt_range(streaks["current"], today), GREEN),
              ("S3", "Longest streak", f'{streaks["longest"]["length"]} days', fmt_range(streaks["longest"], today), PURPLE)]
@@ -451,7 +432,7 @@ def sector_section(streaks: dict, today: dt.date) -> tuple[str, int]:
 
 def speed_trace(weeks: list[dict]) -> tuple[str, int]:
     """Telemetry-style line chart: contributions per week (speed) and active days per week (throttle)."""
-    parts = [section_header("Speed Trace", f"Last {len(weeks)} weeks · contributions per week")]
+    parts = [section_header("Speed Trace")]
     x0, x1 = MARGIN + 46, W - MARGIN
     top, chart_h = HEAD + 24, 210
     peak = max(1, max(w["total"] for w in weeks))
@@ -493,7 +474,7 @@ def speed_trace(weeks: list[dict]) -> tuple[str, int]:
 
 def tower_section(stats: dict) -> tuple[str, int]:
     """Timing tower of languages on the left, car telemetry (stats and grade) on the right."""
-    parts = [section_header("Timing Tower", "Languages by share of code")]
+    parts = [section_header("Timing Tower")]
     y0, row = HEAD + 10, 34
     langs = stats["languages"]
     for i, lang in enumerate(langs):
@@ -535,7 +516,7 @@ def tower_section(stats: dict) -> tuple[str, int]:
 
 def strategy_section(categories: list[dict]) -> tuple[str, int]:
     """Tech stack drawn like a tyre-strategy chart: one row per category, one stint per technology."""
-    parts = [section_header("Tyre Strategy", "Tech stack · one stint per technology")]
+    parts = [section_header("Tyre Strategy")]
     y = HEAD + 6
     x_start = MARGIN + 250
     width = W - MARGIN - x_start
@@ -565,36 +546,9 @@ def strategy_section(categories: list[dict]) -> tuple[str, int]:
     return "\n    ".join(parts), y + 16 + 40
 
 
-def standings_section(standings: dict) -> tuple[str, int]:
-    """Live Formula 1 drivers' championship, drawn as a broadcast timing tower."""
-    parts = [section_header(f'{standings["season"]} Drivers\' Championship',
-                            f'Live · after round {standings["round"]} · refreshed every 12 hours')]
-    y0, row = HEAD + 10, 36
-    leader = standings["drivers"][0]["points"] if standings["drivers"] else 0
-    for i, d in enumerate(standings["drivers"]):
-        y = y0 + i * row
-        colour = TEAM_COLOURS.get(d["team_id"], MUTED)
-        gap = "LEADER" if i == 0 else f'-{leader - d["points"]:g}'
-        parts += [
-            f'<rect x="{MARGIN}" y="{y}" width="{INNER}" height="{row - 4}" fill="{WHITE if i % 2 == 0 else PAPER2}"/>',
-            f'<rect x="{MARGIN}" y="{y}" width="40" height="{row - 4}" fill="{INK}"/>',
-            text(MARGIN + 20, y + 22, d["position"], 15, WHITE, 900, "middle"),
-            f'<rect x="{MARGIN + 48}" y="{y + 5}" width="5" height="{row - 14}" fill="{colour}"/>',
-            text(MARGIN + 66, y + 22, d["code"], 16, INK, 900, family=BLACK_SANS),
-            text(MARGIN + 140, y + 22, d["name"], 15, INK, 600),
-            text(MARGIN + 470, y + 22, d["team"].upper(), 12, MUTED, 700, family=MONO),
-            text(MARGIN + 840, y + 22, f'{d["wins"]} WINS' if d["wins"] else "", 12, MUTED, 700, "end", MONO),
-            text(MARGIN + 960, y + 22, f'{d["points"]:g} PTS', 15, INK, 900, "end", MONO),
-            text(W - MARGIN - 12, y + 22, gap, 13, PURPLE if i == 0 else MUTED, 700, "end", MONO),
-        ]
-    parts.append(text(MARGIN, y0 + row * len(standings["drivers"]) + 18,
-                      "Data: Jolpica F1 API (community-run). Team colours only; no team or series logos.", 11, MUTED, 600, family=MONO))
-    return "\n    ".join(parts), y0 + row * len(standings["drivers"]) + 18 + 40
-
-
 def radio_section(messages: list[str]) -> tuple[str, int]:
     """Team radio caption, like the ones on F1 broadcasts. One message every few seconds."""
-    parts = [section_header("Team Radio", "Race engineer")]
+    parts = [section_header("Team Radio")]
     hold, x, y, w, h = 4, MARGIN, HEAD + 10, INNER, 92
     cycle = hold * len(messages)
     share = 1 / len(messages)
@@ -615,7 +569,7 @@ def radio_section(messages: list[str]) -> tuple[str, int]:
 
 def track_section(snake_svg: str) -> tuple[str, int]:
     """The contribution snake, drawn as the race track, with a chequered start line."""
-    parts = [section_header("Race Track", "Contribution activity")]
+    parts = [section_header("Race Track")]
     root = re.search(r"<svg\b[^>]*>", snake_svg)
     view = re.search(r'viewBox="([^"]+)"', root.group(0)) if root else None
     if not root or not view:
@@ -631,93 +585,197 @@ def track_section(snake_svg: str) -> tuple[str, int]:
     return "\n    ".join(parts), top + h + 20
 
 
-# --------------------------------------------------------------------------
-# Racing cars (top-down drawing) that race down the poster
-# --------------------------------------------------------------------------
-def car_shape(scale: float, body: str) -> str:
-    """Top-down F1 car pointing right (+x), centred on its middle, about 120 x 48 units before scaling."""
-    t = lambda x, y, w, h: f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="4" fill="{INK}"/>'
-    return f'''<g transform="scale({scale})"><g transform="translate(-60,0)">
-      <rect x="0" y="-22" width="12" height="44" rx="2" fill="{RED}"/><rect x="2" y="-22" width="3" height="44" fill="{YELLOW}"/>
-      {t(14, -26, 24, 13)}{t(14, 13, 24, 13)}
-      <path d="M10,-9 L30,-16 L62,-17 L74,-9 L74,9 L62,17 L30,16 L10,9 Z" fill="{body}"/>
-      <path d="M34,-16 L60,-16 L60,-12 L34,-11 Z M34,16 L60,16 L60,12 L34,11 Z" fill="{RED}"/>
-      <path d="M60,-7 L104,-4 L114,0 L104,4 L60,7 Z" fill="{body}"/><path d="M106,-3 L114,0 L106,3 Z" fill="{YELLOW}"/>
-      <ellipse cx="58" cy="0" rx="10" ry="6" fill="#05081C"/><circle cx="56" cy="0" r="4.2" fill="{YELLOW}"/>
-      {t(76, -27, 20, 12)}{t(76, 15, 20, 12)}
-      <path d="M108,-24 L118,-22 L118,22 L108,24 Z" fill="{RED}"/><rect x="112" y="-22" width="3" height="44" fill="{YELLOW}"/>
-    </g></g>'''
+GRADE_FILL = {"S": 1.0, "A+": 0.95, "A": 0.88, "A-": 0.82, "B+": 0.76, "B": 0.70, "B-": 0.64, "C+": 0.58, "C": 0.52}
+LIGHT = "#9AA6C8"                                   # soft blue-grey for labels on the navy panel
 
 
-def race_cars(height: int) -> str:
-    """Two small cars racing down the poster on a zigzag line, swapping the lead (see keyPoints)."""
-    import math
-    top, bottom, amplitude, wavelength = 40, height - 40, (W - 140) / 2, 520
+def status_section(status: dict) -> tuple[str, int]:
+    """Driver Status: a navy dashboard with driver details, car performance grades and race modes."""
+    parts = [section_header("Driver Status")]
+    top = HEAD + 10
+    left, right = MARGIN + 32, MARGIN + 560
+    body = []
+    body.append(text(left, top + 44, "[!]", 15, YELLOW, 800, family=MONO)
+                + text(left + 34, top + 44, status["banner_message"], 15, CAN, 600, family=MONO))
+    body.append(f'<rect x="{MARGIN + 20}" y="{top + 64}" width="{INNER - 40}" height="1" fill="{WHITE}" opacity="0.15"/>')
 
-    def line(shift: float) -> str:
-        pts = [f"{600 + amplitude * math.sin(2 * math.pi * (y - top) / wavelength):.1f},{y + shift}"
-               for y in range(top, bottom + 1, 8)]
-        return "M" + " L".join(pts)
+    def label(x, y, title):
+        return (f'<rect x="{x}" y="{y - 10}" width="9" height="9" fill="none" stroke="{YELLOW}" stroke-width="1.8" transform="rotate(45 {x + 4.5} {y - 5.5})"/>'
+                + text(x + 20, y, title, 14, YELLOW, 800, family=MONO, extra='letter-spacing="4"')
+                + f'<rect x="{x}" y="{y + 12}" width="{460 if x == left else W - MARGIN - 32 - x}" height="1" fill="{WHITE}" opacity="0.2"/>')
 
-    run = round(((bottom - top) / wavelength) * 4 * amplitude / 700)
+    # driver details
+    y = top + 106
+    body.append(label(left, y, "DRIVER"))
+    for i, (key, value) in enumerate(status["driver"]):
+        ry = y + 48 + i * 38
+        colour = RED if key == "NUMBER" else (YELLOW if key == "ROLE" else CAN)
+        body.append(text(left + 4, ry, key, 13, LIGHT, 700, family=MONO, extra='letter-spacing="2"'))
+        body.append(text(left + 140, ry, value, 16, colour, 800 if key in ("NUMBER", "ROLE") else 600, family=MONO))
+    gy = y + 48 + len(status["driver"]) * 38 + 14
+    for i, (name, fill, note, colour) in enumerate(status["gauges"]):
+        ry = gy + i * 40
+        body.append(text(left + 4, ry, name, 14, colour, 900, family=MONO))
+        body.append(f'<rect x="{left + 70}" y="{ry - 11}" width="220" height="10" rx="5" fill="{WHITE}" opacity="0.12"/>')
+        body.append(f'<rect x="{left + 70}" y="{ry - 11}" width="{220 * fill:.0f}" height="10" rx="5" fill="{colour}"/>')
+        body.append(text(left + 306, ry, note, 13, CAN, 500, family=MONO))
+    left_end = gy + 40 * len(status["gauges"])
+
+    # car performance
+    body.append(label(right, y, "CAR PERFORMANCE"))
+    bar_w = W - MARGIN - 32 - right - 70
+    for i, row in enumerate(status["performance"]):
+        ry = y + 50 + i * 56
+        fill = GRADE_FILL.get(row["grade"], 0.6)
+        grade_colour = YELLOW if row["grade"].startswith("A") or row["grade"] == "S" else RED
+        body += [
+            text(right, ry, row["area"].upper(), 15, WHITE, 900, family=MONO),
+            text(right + 150, ry, row["tech"], 12, LIGHT, 600, family=MONO),
+            f'<rect x="{right}" y="{ry + 10}" width="{bar_w}" height="8" rx="4" fill="{WHITE}" opacity="0.12"/>',
+            f'<rect x="{right}" y="{ry + 10}" width="{bar_w * fill:.0f}" height="8" rx="4" fill="url(#perf)"/>',
+            text(W - MARGIN - 36, ry + 16, row["grade"], 24, grade_colour, 900, "end", BLACK_SANS),
+        ]
+    right_end = y + 50 + 56 * len(status["performance"])
+
+    # race modes
+    my = max(left_end, right_end) + 30
+    body.append(label(left, my, "RACE MODES").replace('width="460"', f'width="{INNER - 64}"'))
+    for i, (mode, name, desc) in enumerate(status["modes"]):
+        ry = my + 46 + i * 34
+        colour = YELLOW if i == len(status["modes"]) - 1 else RED
+        body.append(text(left + 4, ry, f"[{mode}]", 14, colour, 800, family=MONO, extra='xml:space="preserve"'))
+        body.append(text(left + 150, ry, name, 15, WHITE, 900, family=MONO))
+        body.append(text(left + 150 + len(name) * 9.4 + 14, ry, f"— {desc}", 14, LIGHT, 500, family=MONO))
+    panel_h = my + 46 + 34 * len(status["modes"]) + 10 - top
+    parts.append(f'<rect x="{MARGIN}" y="{top}" width="{INNER}" height="{panel_h}" rx="8" fill="{NAVY}"/>')
+    parts.append(f'<rect x="{MARGIN}" y="{top}" width="8" height="{panel_h}" fill="{RED}"/>')
+    parts += body
+    return "\n    ".join(parts), top + panel_h + 30
+
+
+TROPHY_ICONS = {  # 24x24 line icons drawn for this profile
+    "trophy": "M7 4h10v4a5 5 0 0 1-10 0z M7 6H4a3 3 0 0 0 3 4 M17 6h3a3 3 0 0 1-3 4 M12 13v4 M8 20h8 M9 17h6",
+    "stopwatch": "M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M12 9v4l3 2 M10 2h4 M12 2v3",
+    "headset": "M4 14v-2a8 8 0 0 1 16 0v2 M4 14h3v5H4z M17 14h3v5h-3z M20 19a4 4 0 0 1-4 3h-3",
+    "chart": "M4 20h16 M6 16l4-5 3 3 5-7 M18 7h-3 M18 7v3",
+    "flag": "M5 21V4 M5 4h13l-2 4 2 4H5",
+    "moon": "M20 14a8 8 0 1 1-10-10 7 7 0 0 0 10 10z M17 3l.6 1.4L19 5l-1.4.6L17 7l-.6-1.4L15 5l1.4-.6z",
+}
+
+
+def trophy_section(trophies: list[dict]) -> tuple[str, int]:
+    """Trophy Cabinet: glowing hexagon badges, one per specialty."""
+    parts = [section_header("Trophy Cabinet")]
+    count = len(trophies)
+    slot = INNER / count
+    cy = HEAD + 96
+    for i, t in enumerate(trophies):
+        cx = MARGIN + slot * i + slot / 2
+        hexagon = " ".join(f"{cx + r * __import__('math').cos(__import__('math').radians(a)):.1f},{cy + r * __import__('math').sin(__import__('math').radians(a)):.1f}"
+                           for r in (56,) for a in range(-90, 270, 60))
+        outer = " ".join(f"{cx + 66 * __import__('math').cos(__import__('math').radians(a)):.1f},{cy + 66 * __import__('math').sin(__import__('math').radians(a)):.1f}"
+                         for a in range(-90, 270, 60))
+        parts += [
+            f'<polygon points="{outer}" fill="none" stroke="{t["colour"]}" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.7">'
+            f'<animateTransform attributeName="transform" type="rotate" from="0 {cx:.1f} {cy}" to="360 {cx:.1f} {cy}" dur="30s" repeatCount="indefinite"/></polygon>',
+            f'<polygon points="{hexagon}" fill="{NAVY}" stroke="{t["colour"]}" stroke-width="4" filter="url(#glow)"/>',
+            f'<path d="{TROPHY_ICONS[t["icon"]]}" fill="none" stroke="{WHITE}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
+            f'transform="translate({cx - 24:.1f},{cy - 24}) scale(2)"/>',
+            text(cx, cy + 102, t["name"], 16, INK, 900, "middle"),
+            f'<rect x="{cx - 24:.1f}" y="{cy + 112}" width="48" height="3" fill="{t["colour"]}"/>',
+            text(cx, cy + 136, t["tech"], 12, MUTED, 700, "middle", MONO),
+        ]
+    return "\n    ".join(parts), cy + 136 + 44
+
+
+def spinning_tyre(cx: float, cy: float, colour: str = RED, r: int = 18) -> str:
+    """A tyre seen side-on, spinning: black tyre, coloured compound band, silver rim spokes."""
+    spokes = "".join(f'<rect x="-1.5" y="{-r + 9}" width="3" height="{r - 9}" fill="#B8BCC8" transform="rotate({a})"/>' for a in range(0, 360, 72))
+    return (f'<g transform="translate({cx},{cy})"><g>'
+            f'<circle r="{r}" fill="{INK}"/>'
+            f'<circle r="{r - 5}" fill="none" stroke="{colour}" stroke-width="3" stroke-dasharray="14 6"/>'
+            f'<circle r="{r - 9}" fill="#2A2A2E"/>{spokes}<circle r="3.5" fill="{YELLOW}"/>'
+            f'<animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.4s" repeatCount="indefinite"/></g></g>')
+
+
+def tyre_divider(colour: str) -> tuple[str, int]:
+    """Divider between sections: a thin track line with a spinning tyre in the middle."""
+    y = 30
+    return (f'<rect x="{MARGIN + 80}" y="{y}" width="{INNER / 2 - 120}" height="1.5" fill="{INK}" opacity="0.5"/>'
+            f'<rect x="{W / 2 + 40}" y="{y}" width="{INNER / 2 - 120}" height="1.5" fill="{INK}" opacity="0.5"/>'
+            + spinning_tyre(600, y, colour)), 64
+
+
+def speed_lines(height: int) -> str:
+    """Thin streaks that sweep across the poster from left to right, like motion lines."""
+    rng = random.Random(33)
     out = []
-    for path_id, shift, body, pace in (("lineA", 0, NAVY, "0;0.30;0.48;0.78;1"), ("lineB", 26, BLUE, "0;0.24;0.55;0.72;1")):
-        out.append(f'''<path id="{path_id}" d="{line(shift)}" fill="none" stroke="none"/>
-    <g><rect x="-48" y="-1.5" width="36" height="3" rx="1.5" fill="url(#trail)"/>{car_shape(0.24, body)}
-      <animateMotion dur="{run}s" repeatCount="indefinite" rotate="auto" calcMode="linear" keyPoints="{pace}" keyTimes="0;0.25;0.5;0.75;1"><mpath href="#{path_id}"/></animateMotion></g>''')
+    for _ in range(max(8, height // 220)):
+        y = rng.uniform(40, height - 40)
+        width = rng.uniform(120, 300)
+        colour = rng.choice([RED, NAVY, YELLOW, NAVY])
+        dur = rng.uniform(1.6, 3.2)
+        out.append(f'<rect x="-400" y="{y:.0f}" width="{width:.0f}" height="2" rx="1" fill="{colour}" opacity="{rng.uniform(0.18, 0.35):.2f}">'
+                   f'<animate attributeName="x" from="-400" to="{W + 50}" dur="{dur:.1f}s" begin="-{rng.uniform(0, dur):.1f}s" repeatCount="indefinite"/></rect>')
     return "\n    ".join(out)
 
 
 # --------------------------------------------------------------------------
 # Whole poster
 # --------------------------------------------------------------------------
-def build_profile(content: dict, days: dict, streaks: dict, stats: dict, standings: dict | None,
-                  snake_svg: str, today: dt.date) -> str:
+def build_profile(content: dict, days: dict, streaks: dict, stats: dict, snake_svg: str, today: dt.date) -> str:
     profile = content["profile"]
     sections = [
         poster_top(profile, streaks, stats),
-        bio_section(profile, content["capabilities"]),
+        status_section(content["status"]),
+        trophy_section(content["trophies"]),
         sector_section(streaks, today),
         speed_trace(weekly_contributions(days, today)),
         tower_section(stats),
         strategy_section(content["tech_stack"]),
+        radio_section(content["radio_messages"]),
+        track_section(snake_svg),
     ]
-    if standings and standings["drivers"]:
-        sections.append(standings_section(standings))
-    sections += [radio_section(content["radio_messages"]), track_section(snake_svg)]
-
+    tyre_colours = [RED, YELLOW, RED, YELLOW]
     blocks, y = [], 0
-    for body, height in sections:
+    for n, (body, height) in enumerate(sections):
         blocks.append(f'<g transform="translate(0,{y})">\n    {body}\n    </g>')
         y += height
+        if 1 <= n < len(sections) - 1:                     # spinning tyre between the data sections
+            divider, dh = tyre_divider(tyre_colours[n % len(tyre_colours)])
+            blocks.append(f'<g transform="translate(0,{y - 20})">{divider}</g>')
+            y += dh - 20
     foot = y + 10
     blocks.append(f'<rect x="{MARGIN}" y="{foot}" width="{INNER}" height="1.2" fill="{INK}"/>')
     blocks.append(text(MARGIN, foot + 28, f"{profile['first_name']} {profile['last_name']}  ·  #{profile['race_number']}", 12, INK, 800, family=MONO))
-    blocks.append(text(W - MARGIN, foot + 28, "DATA: GITHUB API · JOLPICA F1 API · REFRESHED EVERY 12 HOURS", 11, MUTED, 700, "end", MONO))
+    blocks.append(spinning_tyre(W - MARGIN - 18, foot + 24, RED, 14))
     paper_h = foot + 60
     height = paper_h + 36                          # black poster frame around the paper
 
     grade, _ = rank(stats)
+    status = content["status"]
     label = (f'{profile["first_name"]} {profile["last_name"]}, number {profile["race_number"]}. {" | ".join(profile["roles"])}. '
-             f'{" ".join(profile["bio_lines"])} Core capabilities: ' + ", ".join(i["label"] for i in content["capabilities"]) + ". "
-             f'{streaks["total"]} total contributions, longest streak {streaks["longest"]["length"]} days, power level {grade}. '
-             "Tech stack: " + " ".join(f'{c["category"]}: {", ".join(i["label"] for i in c["items"])}.' for c in content["tech_stack"]))
+             + "Car performance: " + ", ".join(f'{r["area"]} {r["grade"]}' for r in status["performance"]) + ". "
+             + "Trophies: " + ", ".join(t["name"] for t in content["trophies"]) + ". "
+             + f'{streaks["total"]} total contributions, longest streak {streaks["longest"]["length"]} days, power level {grade}. '
+             + "Tech stack: " + " ".join(f'{c["category"]}: {", ".join(i["label"] for i in c["items"])}.' for c in content["tech_stack"]))
     joined = "\n    ".join(blocks)
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {height}" width="{W}" height="{height}" role="img" aria-label="{esc(label)}">
   <title>{esc(label)}</title>
   <style>@media (prefers-reduced-motion: reduce) {{ .fx {{ display: none; }} }}</style>
   <defs>
-    <linearGradient id="trail" x1="0" x2="1"><stop offset="0" stop-color="{RED}" stop-opacity="0"/><stop offset="1" stop-color="{RED}" stop-opacity="0.8"/></linearGradient>
+    <linearGradient id="perf" x1="0" x2="1"><stop offset="0" stop-color="{YELLOW}"/><stop offset="1" stop-color="{RED}"/></linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <clipPath id="paper"><rect x="18" y="18" width="{W - 36}" height="{paper_h}"/></clipPath>
   </defs>
   <rect width="{W}" height="{height}" rx="6" fill="#1A1A1A"/>
   <rect x="18" y="18" width="{W - 36}" height="{paper_h}" fill="{PAPER}"/>
   <g clip-path="url(#paper)">
+    <g class="fx">
+    {speed_lines(height)}
+    </g>
     <g transform="translate(0,18)">
     {joined}
-    </g>
-    <g class="fx">
-    {race_cars(height)}
     </g>
   </g>
 </svg>
@@ -734,12 +792,10 @@ def main() -> None:
     days = fetch_contribution_days()
     streaks = compute_streaks(days, today)
     stats = fetch_stats()
-    standings = fetch_f1_standings()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    svg = build_profile(content, days, streaks, stats, standings, SNAKE_FILE.read_text(encoding="utf-8"), today)
+    svg = build_profile(content, days, streaks, stats, SNAKE_FILE.read_text(encoding="utf-8"), today)
     (OUT_DIR / "profile.svg").write_text(svg, encoding="utf-8")
-    print(f'Wrote {OUT_DIR}/profile.svg (total {streaks["total"]}, grade {rank(stats)[0]}, '
-          f'F1 standings {"included" if standings else "skipped"})')
+    print(f'Wrote {OUT_DIR}/profile.svg (total {streaks["total"]}, grade {rank(stats)[0]})')
 
 
 if __name__ == "__main__":
