@@ -19,7 +19,7 @@ Inputs
     GH_USER                       GitHub login to read statistics for
     OUT_DIR                       folder holding github-snake-dark.svg; output goes here
     scripts/profile_content.json  name, quote, driver status, trophies, tech stack and radio messages
-    assets/car-blueprint.jpg      picture shown in the card under the name
+    assets/car-blueprint.jpg      picture shown in the card (the sketch with its paper turned blueprint blue)
 
 Output
     OUT_DIR/profile.svg
@@ -249,7 +249,7 @@ NAVY, BLUE, CAN = "#233268", "#1D19AF", "#F4ECEF"
 RED, YELLOW = "#B8343F", "#D9B13B"                # team red and yellow, aged slightly to suit the paper
 WHITE = "#FFFFFF"
 PANEL = "#0C1E4A"                                 # deep ink blue for the dark panels
-PANEL_AGEING = 0.4                                # how strongly the paper stains show through the dark panels
+PANEL_AGEING = 0.0                                # how strongly the paper stains show through the dark panels
 PURPLE, GREEN = "#C77DFF", "#3DDC84"            # F1 timing colours: fastest / personal best
 TYRES = [  # (letter, colour) in the order the tech-stack rows use them
     ("S", "#B8343F"), ("M", "#D9B13B"), ("H", "#FFFFFF"), ("I", "#43B047"), ("W", "#0067AD"), ("S", "#B8343F"), ("M", "#D9B13B"),
@@ -734,11 +734,8 @@ def paper_defs(height: int) -> str:
 
 
 def aged_paper(width: int, height: int) -> str:
-    """Base paper tone, stains, grain and smoky edges, stacked in that order."""
-    return (f'<rect x="18" y="18" width="{width}" height="{height}" fill="{PAPER}"/>'
-            f'<rect x="18" y="18" width="{width}" height="{height}" filter="url(#stains)" opacity="0.55"/>'
-            f'<rect x="18" y="18" width="{width}" height="{height}" filter="url(#grain)" opacity="0.5"/>'
-            f'<rect x="18" y="18" width="{width}" height="{height}" fill="url(#vignette)"/>')
+    """Plain blueprint-blue paper."""
+    return f'<rect x="18" y="18" width="{width}" height="{height}" fill="{PAPER}"/>'
 
 
 def drafting_lines(height: int) -> str:
