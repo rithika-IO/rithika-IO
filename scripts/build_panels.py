@@ -19,7 +19,7 @@ Inputs
     GH_USER                       GitHub login to read statistics for
     OUT_DIR                       folder holding github-snake-dark.svg; output goes here
     scripts/profile_content.json  name, quote, driver status, trophies, tech stack and radio messages
-    assets/car-sketch.jpg         picture shown in the card under the name
+    assets/car-blueprint.jpg      picture shown in the card under the name
 
 Output
     OUT_DIR/profile.svg
@@ -241,14 +241,16 @@ def rank(stats: dict) -> tuple[str, float]:
 # Theme: F1 poster (light editorial poster + F1 data graphics)
 # --------------------------------------------------------------------------
 # Colours: Red Bull palette (colours only; no logos or team names are drawn)
-PAPER, PAPER2, INK, MUTED, RULE = "#E6DFCD", "#DAD1BB", "#111111", "#5E584C", "#BDB49F"
-CARD_BG = "#F2EDE1"                               # light cards that sit on the aged paper
+# Blueprint palette: blue paper, white "ink" lines and text, like a cyanotype drawing
+PAPER, PAPER2, INK, MUTED, RULE = "#1D4A93", "#173E7E", "#EEF3FF", "#AFC3E6", "#5A82C4"
+DARK = "#0A1430"                                  # for things that stay dark: tyres, position boxes, text outlines
+CARD_BG = "#22549E"                               # slightly lighter blue cards that sit on the paper
 NAVY, BLUE, CAN = "#233268", "#1D19AF", "#F4ECEF"
 RED, YELLOW = "#B8343F", "#D9B13B"                # team red and yellow, aged slightly to suit the paper
 WHITE = "#FFFFFF"
-PANEL = "#2A251F"                                 # sepia charcoal for the dark panels, like the sketch ink
+PANEL = "#0C1E4A"                                 # deep ink blue for the dark panels
 PANEL_AGEING = 0.4                                # how strongly the paper stains show through the dark panels
-PURPLE, GREEN = "#9B30FF", "#00A651"            # F1 timing colours: fastest / personal best
+PURPLE, GREEN = "#C77DFF", "#3DDC84"            # F1 timing colours: fastest / personal best
 TYRES = [  # (letter, colour) in the order the tech-stack rows use them
     ("S", "#B8343F"), ("M", "#D9B13B"), ("H", "#FFFFFF"), ("I", "#43B047"), ("W", "#0067AD"), ("S", "#B8343F"), ("M", "#D9B13B"),
 ]
@@ -302,10 +304,10 @@ def fmt_range(streak: dict, today: dt.date) -> str:
 
 
 def ink_safe(colour: str) -> str:
-    """Brand colours that are near-white would vanish on the paper, so draw them in ink instead."""
+    """Brand colours that are near-black would vanish on the blue paper, so draw them in light ink instead."""
     c = colour.lstrip("#")
     r, g, b = (int(c[i:i + 2], 16) for i in (0, 2, 4))
-    return INK if (0.299 * r + 0.587 * g + 0.114 * b) > 200 else colour
+    return INK if (0.299 * r + 0.587 * g + 0.114 * b) < 70 else colour
 
 
 def panel(x: float, y: float, w: float, h: float, rx: float = 0) -> str:
@@ -329,7 +331,7 @@ HEAD = 76   # height of a section header
 
 def tyre(cx: float, cy: float, letter: str, colour: str, r: int = 15) -> str:
     """Tyre icon as used on F1 strategy graphics: black tyre with a coloured compound band."""
-    return (f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{INK}"/>'
+    return (f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{DARK}"/>'
             f'<circle cx="{cx}" cy="{cy}" r="{r - 4}" fill="none" stroke="{colour}" stroke-width="3.5"/>'
             + text(cx, cy + 4.5, letter, 12, WHITE, 900, "middle"))
 
@@ -350,7 +352,7 @@ def name_card(profile: dict, x: float, y: float, w: float, h: float) -> str:
     """
     picture = Path(__file__).resolve().parent.parent / profile["card_image"]
     encoded = base64.b64encode(picture.read_bytes()).decode()
-    outline = f'stroke="{INK}" stroke-width="3" paint-order="stroke" stroke-linejoin="round"'
+    outline = f'stroke="{DARK}" stroke-width="3" paint-order="stroke" stroke-linejoin="round"'
     return f'''<g>
       <mask id="cardfade"><rect x="{x + 26}" y="{y + 26}" width="{w - 52}" height="{h - 52}" fill="white" filter="url(#soft)"/></mask>
       <image x="{x}" y="{y}" width="{w}" height="{h}" preserveAspectRatio="xMidYMid slice" mask="url(#cardfade)" href="data:image/jpeg;base64,{encoded}"/>
@@ -434,8 +436,8 @@ def speed_trace(weeks: list[dict]) -> tuple[str, int]:
         parts.append(f'<rect x="{x0}" y="{py(v):.1f}" width="{x1 - x0}" height="1" fill="{RULE}"/>')
         parts.append(text(x0 - 10, py(v) + 4, f"{v:g}", 11, MUTED, 600, "end", MONO))
     points = " ".join(f"{px(i):.1f},{py(w['total']):.1f}" for i, w in enumerate(weeks))
-    parts.append(f'<polygon points="{x0},{py(0):.1f} {points} {x1},{py(0):.1f}" fill="{NAVY}" fill-opacity="0.10"/>')
-    parts.append(f'<polyline points="{points}" fill="none" stroke="{NAVY}" stroke-width="3" stroke-linejoin="round"/>')
+    parts.append(f'<polygon points="{x0},{py(0):.1f} {points} {x1},{py(0):.1f}" fill="{INK}" fill-opacity="0.10"/>')
+    parts.append(f'<polyline points="{points}" fill="none" stroke="{INK}" stroke-width="3" stroke-linejoin="round"/>')
     avg = sum(w["total"] for w in weeks) / len(weeks)
     parts.append(f'<rect x="{x0}" y="{py(avg):.1f}" width="{x1 - x0}" height="1.5" fill="{RED}" opacity="0.8"/>')
     parts.append(text(x1, py(avg) - 6, f"AVG {avg:.1f}/WK", 11, RED, 800, "end", MONO))
@@ -471,7 +473,7 @@ def tower_section(stats: dict) -> tuple[str, int]:
         interval = "LEADER" if i == 0 else f'+{langs[i - 1]["percent"] - lang["percent"]:.1f}%'
         parts += [
             f'<rect x="{MARGIN}" y="{y}" width="560" height="{row - 4}" fill="{CARD_BG if i % 2 == 0 else PAPER2}"/>',
-            f'<rect x="{MARGIN}" y="{y}" width="36" height="{row - 4}" fill="{INK}"/>',
+            f'<rect x="{MARGIN}" y="{y}" width="36" height="{row - 4}" fill="{DARK}"/>',
             text(MARGIN + 18, y + 21, i + 1, 15, WHITE, 900, "middle"),
             f'<rect x="{MARGIN + 44}" y="{y + 5}" width="5" height="{row - 14}" fill="{lang["color"]}"/>',
             text(MARGIN + 60, y + 21, lang["name"].upper(), 15, INK, 800),
@@ -516,7 +518,7 @@ def strategy_section(categories: list[dict]) -> tuple[str, int]:
         natural = [pill_width(i, 13 + 16 + 8 + 10) for i in cat["items"]]
         factor = width / sum(natural)
         x = x_start
-        stripe = INK if colour == "#FFFFFF" else colour
+        stripe = colour
         for item, nw in zip(cat["items"], natural):
             w = nw * factor
             icon = (f'<path d="{item["icon"]}" fill="{ink_safe(item.get("colour", INK))}" transform="translate({x + 10:.1f},{y + 13}) scale({16 / 24})"/>'
@@ -681,7 +683,7 @@ def spinning_tyre(cx: float, cy: float, colour: str = RED, r: int = 18) -> str:
     """A tyre seen side-on, spinning: black tyre, coloured compound band, silver rim spokes."""
     spokes = "".join(f'<rect x="-1.5" y="{-r + 9}" width="3" height="{r - 9}" fill="#B8BCC8" transform="rotate({a})"/>' for a in range(0, 360, 72))
     return (f'<g transform="translate({cx},{cy})"><g>'
-            f'<circle r="{r}" fill="{INK}"/>'
+            f'<circle r="{r}" fill="{DARK}"/>'
             f'<circle r="{r - 5}" fill="none" stroke="{colour}" stroke-width="3" stroke-dasharray="14 6"/>'
             f'<circle r="{r - 9}" fill="#2A2A2E"/>{spokes}<circle r="3.5" fill="{YELLOW}"/>'
             f'<animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.4s" repeatCount="indefinite"/></g></g>')
@@ -702,7 +704,7 @@ def speed_lines(height: int) -> str:
     for _ in range(max(8, height // 220)):
         y = rng.uniform(40, height - 40)
         width = rng.uniform(120, 300)
-        colour = rng.choice([RED, NAVY, YELLOW, NAVY])
+        colour = rng.choice([RED, WHITE, YELLOW, WHITE])
         dur = rng.uniform(1.6, 3.2)
         out.append(f'<rect x="-400" y="{y:.0f}" width="{width:.0f}" height="2" rx="1" fill="{colour}" opacity="{rng.uniform(0.18, 0.35):.2f}">'
                    f'<animate attributeName="x" from="-400" to="{W + 50}" dur="{dur:.1f}s" begin="-{rng.uniform(0, dur):.1f}s" repeatCount="indefinite"/></rect>')
@@ -718,7 +720,7 @@ def paper_defs(height: int) -> str:
     """
     return f'''<filter id="stains" x="0" y="0" width="100%" height="100%">
       <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="4" seed="33" result="n"/>
-      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.36  0 0 0 0 0.31  0 0 0 0 0.24  0 0 0 -2.6 1.45"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.30  0 0 0 0 0.20  0 0 0 0 0.10  0 0 0 -2.6 1.45"/>
     </filter>
     <filter id="grain" x="0" y="0" width="100%" height="100%">
       <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="g"/>
@@ -726,8 +728,8 @@ def paper_defs(height: int) -> str:
     </filter>
     <filter id="soft" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="22"/></filter>
     <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.75">
-      <stop offset="0.55" stop-color="#3B2F22" stop-opacity="0"/>
-      <stop offset="1" stop-color="#3B2F22" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#1A1208" stop-opacity="0"/>
+      <stop offset="1" stop-color="#1A1208" stop-opacity="0.65"/>
     </radialGradient>'''
 
 
