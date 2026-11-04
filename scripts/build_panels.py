@@ -276,7 +276,7 @@ def project_type(repo: dict, overrides: dict) -> str:
 
 
 SUPPORT_LANGUAGES = {"CSS", "HTML", "SCSS", "Shell", "PowerShell", "Batchfile", "Makefile", "Dockerfile", "Procfile"}
-SHORT_NAMES = {"Jupyter Notebook": "Jupyter"}
+SHORT_NAMES = {"Jupyter Notebook": "Jupyter", "JavaScript": "JS"}  # keeps two-language stacks inside the card
 
 
 def stack_of(repo: dict) -> str:

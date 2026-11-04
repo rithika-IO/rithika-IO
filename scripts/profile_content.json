@@ -528,6 +528,9 @@
   "repo_showcase": {
     "limit": null,
     "hide": [],
-    "types": {}
+    "types": {
+      "product_api": "Backend service",
+      "aircraft-tracker": "Full-stack"
+    }
   }
 }
