@@ -165,16 +165,16 @@ KIND_ACCENTS = {"Full-stack": PINK, "Enterprise app": ORANGE, "Machine learning"
 
 
 def callout_sequence(skills: list[dict], repos: list[dict]) -> list[dict]:
-    """Alternate skill cards and repo cards: Backend, repo 1, Frontend, repo 2, ...
+    """One lap per repo: the card circles the four tyres, then stops at the cockpit for the next repo.
 
-    The card then swings between a tyre and the cockpit, and a new repo appears
-    every second stop. The sequence runs until every repo has had a turn.
+    Lap 1: Backend, Frontend, APIs, Infra, repo 1. Lap 2: ... repo 2, and so on
+    until every repo has had its turn, then the whole loop starts again.
     """
     skills = [dict(c, accent=CALLOUT_ACCENTS[i % len(CALLOUT_ACCENTS)]) for i, c in enumerate(skills)]
     repos = [dict(c, accent=KIND_ACCENTS.get(c.get("kind"), MUTED)) for c in repos]
     if not repos or not skills:
         return skills or repos
-    return [card for k in range(max(len(skills), len(repos))) for card in (skills[k % len(skills)], repos[k % len(repos)])]
+    return [card for repo in repos for card in (*skills, repo)]
 
 
 def timed_opacity(i: int, n: int, fade_s: float = 0.4) -> str:
