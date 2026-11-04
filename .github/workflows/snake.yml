@@ -4,16 +4,21 @@ on:
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:
-  # Rebuild straight away when the workflow, the script or its content changes.
+  # Rebuild straight away when the workflow, the scripts or the car photo change.
   push:
     branches: [main]
     paths:
       - ".github/workflows/snake.yml"
       - "scripts/**"
-      - "assets/banner.png"
+      - "assets/car-top.jpg"
 
 permissions:
   contents: write
+
+# Never let two runs commit profile.svg at the same time.
+concurrency:
+  group: profile-image
+  cancel-in-progress: false
 
 jobs:
   generate:
@@ -24,27 +29,46 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # The snake is drawn on the Race Track section of the poster: red snake, grey-to-navy dots.
-      # github.repository_owner always matches the current username, so a rename cannot break it again.
+      # The snake becomes the Track map panel. Its colours are replaced by
+      # scripts/dashboard.py (recolour_snake), so the colour flags here do not matter.
+      # github.repository_owner always matches the current username, so a rename cannot break it.
       - name: Generate Snake
         uses: Platane/snk/svg-only@v3
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
-            dist/github-snake.svg
-            dist/github-snake-dark.svg?color_snake=#B8343F&color_dots=#2A5AA6,#6F93D1,#A8C1EC,#E4ECFB,#D9B13B
+            dist/github-snake-dark.svg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Draws dist/profile.svg (the whole F1 poster, including live F1 standings).
-      - name: Build themed panels
+      # Draws dist/profile.svg: the whole mission-control dashboard.
+      - name: Build profile image
         run: python3 scripts/build_panels.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_USER: ${{ github.repository_owner }}
           OUT_DIR: dist
+          DISPLAY_TZ: Asia/Colombo
 
-      - name: Push Snake to output branch
+      # The README shows ./profile.svg from main. A file inside the repo is served
+      # directly by GitHub, not through its image proxy (camo), so a new version
+      # appears within minutes and the README never needs a ?v= bump again.
+      - name: Commit profile.svg to main
+        run: |
+          cp dist/profile.svg profile.svg
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add profile.svg
+          if git diff --cached --quiet; then
+            echo "profile.svg unchanged"
+          else
+            git commit -m "Update profile.svg"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      # Kept as a backup copy of the generated files; the README no longer uses this branch.
+      - name: Push generated files to output branch
         uses: crazy-max/ghaction-github-pages@v3.1.0
         with:
           target_branch: output
