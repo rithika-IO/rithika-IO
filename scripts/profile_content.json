@@ -1,5 +1,5 @@
 {
-  "_readme": "Content for the profile image (drawn by dashboard.py). profile.full_name and race_number appear in the header. car_callouts are the five cards that cycle around the car photo; spot is one of front_left, front_right, cockpit, rear_left, rear_right. status.performance gives the four Car setup grades. trophies, tech_stack and radio_messages fill their panels. In tech_stack, text_width is the label width in pixels at 16px bold (leave it out and it is estimated) and icon is an SVG path on a 24x24 grid from simpleicons.org (null for a plain dot). In car_callouts rows, {latest_repo}, {latest_language} and {latest_push} are replaced on every run with your most recently pushed public repo (the profile repo itself is skipped), its main language and how long ago it was pushed.",
+  "_readme": "Content for the profile image (drawn by dashboard.py). profile.full_name and race_number appear in the header. car_callouts are the four skill cards at the tyres; spot is front_left, front_right, rear_left or rear_right. The cockpit shows one card per public repo, read from GitHub on every run and interleaved with the skill cards. repo_showcase controls it: limit caps how many repos (null = all, newest pushes first), hide lists repo names to leave out, and types sets a repo's project type by name, e.g. {\"CareNexus\": \"Enterprise app\"}, when the automatic guess is wrong. status.performance gives the four Car setup grades. trophies, tech_stack and radio_messages fill their panels. In tech_stack, text_width is the label width in pixels at 16px bold (leave it out and it is estimated) and icon is an SVG path on a 24x24 grid from simpleicons.org (null for a plain dot).",
   "profile": {
     "full_name": "Rithika Mandiv",
     "name": "RITHIKA MANDIV",
@@ -523,24 +523,11 @@
           "hosting"
         ]
       ]
-    },
-    {
-      "spot": "cockpit",
-      "title": "Driver",
-      "rows": [
-        [
-          "{latest_repo}",
-          "currently building"
-        ],
-        [
-          "{latest_language}",
-          "main language"
-        ],
-        [
-          "{latest_push}",
-          "last push"
-        ]
-      ]
     }
-  ]
+  ],
+  "repo_showcase": {
+    "limit": null,
+    "hide": [],
+    "types": {}
+  }
 }

@@ -167,7 +167,8 @@ def fetch_stats() -> dict:
 
     sizes: dict[str, int] = {}
     for repo in repos:
-        for name, size in rest(f"/repos/{repo['full_name']}/languages").items():
+        repo["language_sizes"] = rest(f"/repos/{repo['full_name']}/languages")
+        for name, size in repo["language_sizes"].items():
             sizes[name] = sizes.get(name, 0) + size
     top = sorted(sizes.items(), key=lambda kv: kv[1], reverse=True)[:8]
     shown_total = sum(size for _, size in top) or 1
@@ -201,7 +202,7 @@ def fetch_stats() -> dict:
         "reviews": reviews,
         "followers": followers,
         "languages": languages,
-        "latest_repo": latest_repo(repos),
+        "repos": repos,
     }
 
 
@@ -234,21 +235,21 @@ def rank(stats: dict) -> tuple[str, float]:
 
 
 # --------------------------------------------------------------------------
-# Live values for the car callouts
+# Repo showcase: one card per public repo, shown at the cockpit marker
 # --------------------------------------------------------------------------
-def latest_repo(repos: list[dict]) -> dict | None:
-    """The public repo pushed to most recently.
-
-    The profile repo itself is skipped: the workflow commits profile.svg to it
-    twice a day, so it would always win. Archived repos are skipped too.
-    """
-    candidates = [r for r in repos if r.get("name", "").lower() != LOGIN.lower()
-                  and not r.get("archived") and not r.get("private") and r.get("pushed_at")]
-    if not candidates:
-        return None
-    repo = max(candidates, key=lambda r: r["pushed_at"])
-    return {"name": repo["name"], "language": repo.get("language") or "Mixed",
-            "pushed_at": dt.datetime.fromisoformat(repo["pushed_at"].replace("Z", "+00:00"))}
+# Checked in order; the first rule whose keywords appear in a repo's description,
+# topics or languages decides its project type. profile_content.json can override
+# any repo by name (repo_showcase.types), so a wrong guess is a one-line fix.
+TYPE_RULES = [
+    ("Machine learning", ("machine learning", "machine-learning", " ml ", "prediction", "predict", "classifier",
+                          "scikit", "pytorch", "tensorflow", "distilbert", "nlp", "anomaly", "jupyter notebook")),
+    ("Enterprise app",   ("spring boot", "spring-boot", "javafx", "asp.net", "enterprise", "management system", "insurance")),
+    ("Full-stack",       ("full-stack", "full stack", "fullstack")),
+    ("Language tooling", ("interpreter", "compiler", "parser", "lexer", "programming language")),
+    ("CLI tool",         (" cli ", " cli,", "command-line", "command line", "terminal", "process manager")),
+    ("Backend service",  (" api ", "backend", "microservice", "gateway", "queue", "worker")),
+    ("Frontend",         ("portfolio", "website", "landing page")),
+]
 
 
 def time_ago(then: dt.datetime, now: dt.datetime) -> str:
@@ -259,27 +260,56 @@ def time_ago(then: dt.datetime, now: dt.datetime) -> str:
     return "just now"
 
 
-def fill_callouts(content: dict, stats: dict, now: dt.datetime) -> None:
-    """Replace {latest_repo}, {latest_language} and {latest_push} in the car callout rows.
+def project_type(repo: dict, overrides: dict) -> str:
+    """Guess what kind of project a repo is, unless profile_content.json says so."""
+    if repo["name"] in overrides:
+        return overrides[repo["name"]]
+    languages = [name.lower() for name in repo.get("language_sizes", {})]
+    words = f' {(repo.get("description") or "").lower()} {" ".join(repo.get("topics") or [])} {" ".join(languages)} '
+    words = words.replace(".", " ").replace("(", " ").replace(")", " ")
+    for name, keywords in TYPE_RULES:
+        if any(k in words for k in keywords):
+            return name
+    frontend = {"typescript", "javascript", "css", "html"} & set(languages)
+    backend = {"python", "java", "go", "c#", "php", "plpgsql"} & set(languages)
+    return "Full-stack" if frontend and backend else "Project"
 
-    Tokens keep the wording in profile_content.json while the values come from
-    GitHub on every run. If no repo is found, rows using a token are dropped.
+
+SUPPORT_LANGUAGES = {"CSS", "HTML", "SCSS", "Shell", "PowerShell", "Batchfile", "Makefile", "Dockerfile", "Procfile"}
+SHORT_NAMES = {"Jupyter Notebook": "Jupyter"}
+
+
+def stack_of(repo: dict) -> str:
+    """The repo's top two languages by bytes of code, e.g. "TypeScript · Python".
+
+    Styling and build files (CSS, Shell, Dockerfile...) only count when there is
+    nothing else, so a JavaFX app reads "Java", not "Java · CSS".
     """
-    latest = stats.get("latest_repo")
-    values = {}
-    if latest:
-        values = {"{latest_repo}": latest["name"], "{latest_language}": latest["language"],
-                  "{latest_push}": time_ago(latest["pushed_at"], now)}
-    for callout in content.get("car_callouts", []):
-        rows = []
-        for value, name in callout["rows"]:
-            if "{" in value:
-                if not values:
-                    continue
-                for token, real in values.items():
-                    value = value.replace(token, real)
-            rows.append([value, name])
-        callout["rows"] = rows or [["-", "no data"]]
+    ranked = [name for name, _ in sorted(repo.get("language_sizes", {}).items(), key=lambda kv: kv[1], reverse=True)]
+    main = [name for name in ranked if name not in SUPPORT_LANGUAGES] or ranked
+    return " · ".join(SHORT_NAMES.get(name, name) for name in main[:2]) or repo.get("language") or "Mixed"
+
+
+def repo_cards(repos: list[dict], settings: dict, now: dt.datetime) -> list[dict]:
+    """Callout cards for every public repo, most recently pushed first.
+
+    Skipped: the profile repo (the workflow commits to it twice a day), archived
+    repos, and any names listed in repo_showcase.hide.
+    """
+    hidden = {name.lower() for name in settings.get("hide", [])} | {LOGIN.lower()}
+    overrides = settings.get("types", {})
+    shown = [r for r in repos if r.get("name", "").lower() not in hidden and not r.get("archived") and r.get("pushed_at")]
+    shown.sort(key=lambda r: r["pushed_at"], reverse=True)
+    if settings.get("limit"):
+        shown = shown[:settings["limit"]]
+    cards = []
+    for repo in shown:
+        pushed = dt.datetime.fromisoformat(repo["pushed_at"].replace("Z", "+00:00"))
+        kind = project_type(repo, overrides)
+        cards.append({"spot": "cockpit", "title": repo["name"], "kind": kind,
+                      "rows": [[kind, "project type"], [stack_of(repo), "stack"],
+                               [f'★ {repo.get("stargazers_count", 0)} · {time_ago(pushed, now)}', "stars · last push"]]})
+    return cards
 
 
 # --------------------------------------------------------------------------
@@ -374,7 +404,7 @@ def main() -> None:
     streaks = compute_streaks(days, today)
     stats = fetch_stats()
     grade, percentile = rank(stats)
-    fill_callouts(content, stats, now)
+    content["repo_cards"] = repo_cards(stats["repos"], content.get("repo_showcase", {}), now)
     year_total = sum(days.get(today - dt.timedelta(days=offset), 0) for offset in range(365))
 
     svg = dashboard.build(

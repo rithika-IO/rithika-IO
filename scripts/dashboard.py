@@ -159,12 +159,32 @@ def car_photo(x, y, scale, rotate=False) -> str:
 
 
 CYCLE_STEP = 4.0                                                 # seconds each callout stays on screen
-CALLOUT_ACCENTS = [TEAL, PINK, YELLOW, GREEN, ORANGE]
+CALLOUT_ACCENTS = [TEAL, PINK, YELLOW, GREEN]                    # the four skill cards, in order
+KIND_ACCENTS = {"Full-stack": PINK, "Enterprise app": ORANGE, "Machine learning": GREEN, "CLI tool": YELLOW,
+                "Language tooling": CORAL, "Backend service": TEAL, "Frontend": PINK}
 
 
-def timed_opacity(i: int, n: int, fade: float = 0.02) -> str:
-    """SMIL opacity track: visible only during slot i of n, so the slots take turns in one shared loop."""
+def callout_sequence(skills: list[dict], repos: list[dict]) -> list[dict]:
+    """Alternate skill cards and repo cards: Backend, repo 1, Frontend, repo 2, ...
+
+    The card then swings between a tyre and the cockpit, and a new repo appears
+    every second stop. The sequence runs until every repo has had a turn.
+    """
+    skills = [dict(c, accent=CALLOUT_ACCENTS[i % len(CALLOUT_ACCENTS)]) for i, c in enumerate(skills)]
+    repos = [dict(c, accent=KIND_ACCENTS.get(c.get("kind"), MUTED)) for c in repos]
+    if not repos or not skills:
+        return skills or repos
+    return [card for k in range(max(len(skills), len(repos))) for card in (skills[k % len(skills)], repos[k % len(repos)])]
+
+
+def timed_opacity(i: int, n: int, fade_s: float = 0.4) -> str:
+    """SMIL opacity track: visible only during slot i of n, so the slots take turns in one shared loop.
+
+    keyTimes are fractions of the whole loop, so the fade is converted from
+    seconds; that keeps it 0.4 s whether the loop has 5 slots or 30.
+    """
     a, b = i / n, (i + 1) / n
+    fade = fade_s / (n * CYCLE_STEP)
     if i == 0:
         times, values = [0, b - fade, b, 1], [1, 1, 0, 0]
     else:
@@ -188,7 +208,7 @@ def car_section(x, y, w, h, callouts: list[dict]) -> str:
         sx, sy = to_screen(*PHOTO_SPOTS[c["spot"]])
         cy = min(max(sy - card_h / 2, y + 18), y + h - card_h - 18)   # keep the card inside the column
         card_ys.append(cy)
-        colour = CALLOUT_ACCENTS[i % len(CALLOUT_ACCENTS)]
+        colour = c["accent"]
         # leader line + highlight ring for this marker, shown only during its slot
         parts.append(f'<g opacity="{1 if i == 0 else 0}">{timed_opacity(i, n)}'
                      f'<path d="M{card_x + card_w + 4},{sy:.0f} H{sx - 14:.0f}" fill="none" stroke="{colour}" stroke-width="1.2" stroke-dasharray="3 4" opacity="0.8"/>'
@@ -197,7 +217,7 @@ def car_section(x, y, w, h, callouts: list[dict]) -> str:
     # the card frame slides between positions; each topic's text fades in during its own slot
     keys, vals = [], []
     for i in range(n):
-        keys += [i / n, (i + 1) / n - 0.025]
+        keys += [i / n, (i + 1) / n - 0.5 / (n * CYCLE_STEP)]   # hold, then a 0.5 s slide to the next marker
         vals += [card_ys[i], card_ys[i]]
     keys.append(1.0); vals.append(card_ys[0])
     slide = (f'<animateTransform attributeName="transform" type="translate" dur="{n * CYCLE_STEP}s" repeatCount="indefinite" '
@@ -205,9 +225,9 @@ def car_section(x, y, w, h, callouts: list[dict]) -> str:
     cy = card_ys[0]
     card = [f'<rect x="{card_x}" y="{cy:.1f}" width="{card_w}" height="{card_h}" rx="16" fill="#141416" fill-opacity="0.94" stroke="{LINE}"/>']
     for i, c in enumerate(callouts):
-        colour = CALLOUT_ACCENTS[i % len(CALLOUT_ACCENTS)]
+        colour = c["accent"]
         body = [f'<rect x="{card_x + 18}" y="{cy + 18:.1f}" width="22" height="3" rx="1.5" fill="{colour}"/>',
-                text(card_x + 18, cy + 46, c["title"], 17, FG, 500)]
+                text(card_x + 18, cy + 46, c["title"] if len(c["title"]) <= 16 else c["title"][:15] + "…", 17, FG, 500)]
         for r, (value, name) in enumerate(c["rows"]):
             ry = cy + 86 + r * 46
             value = value if len(value) <= 20 else value[:19] + "…"      # long repo names must fit the card
@@ -317,7 +337,7 @@ def build_top(content: dict, stats: dict, streaks: dict, grade: str, percentile:
     g_h, s_h = 150, 236
     body = [
         head,
-        car_section(20, y, car_w, row_h, content["car_callouts"]),
+        car_section(20, y, car_w, row_h, callout_sequence(content["car_callouts"], content.get("repo_cards", []))),
         powertrain(mx, y, mid_w, 360, stats["languages"]),
         engine_load(mx, y + 360 + GAP, mid_w, row_h - 360 - GAP, daily),
         gauges(rx, y, right_w, g_h, streaks, grade, percentile, year_total),
