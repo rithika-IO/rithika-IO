@@ -201,6 +201,7 @@ def fetch_stats() -> dict:
         "reviews": reviews,
         "followers": followers,
         "languages": languages,
+        "latest_repo": latest_repo(repos),
     }
 
 
@@ -230,6 +231,55 @@ def rank(stats: dict) -> tuple[str, float]:
     percentile = (1 - sum(w * s for w, s in parts) / sum(w for w, _ in parts)) * 100
     grades = [(1, "S"), (12.5, "A+"), (25, "A"), (37.5, "A-"), (50, "B+"), (62.5, "B"), (75, "B-"), (87.5, "C+"), (100, "C")]
     return next(g for limit, g in grades if percentile <= limit), percentile
+
+
+# --------------------------------------------------------------------------
+# Live values for the car callouts
+# --------------------------------------------------------------------------
+def latest_repo(repos: list[dict]) -> dict | None:
+    """The public repo pushed to most recently.
+
+    The profile repo itself is skipped: the workflow commits profile.svg to it
+    twice a day, so it would always win. Archived repos are skipped too.
+    """
+    candidates = [r for r in repos if r.get("name", "").lower() != LOGIN.lower()
+                  and not r.get("archived") and not r.get("private") and r.get("pushed_at")]
+    if not candidates:
+        return None
+    repo = max(candidates, key=lambda r: r["pushed_at"])
+    return {"name": repo["name"], "language": repo.get("language") or "Mixed",
+            "pushed_at": dt.datetime.fromisoformat(repo["pushed_at"].replace("Z", "+00:00"))}
+
+
+def time_ago(then: dt.datetime, now: dt.datetime) -> str:
+    seconds = max(0, int((now - then).total_seconds()))
+    for size, unit in ((86400, "d"), (3600, "h"), (60, "m")):
+        if seconds >= size:
+            return f"{seconds // size}{unit} ago"
+    return "just now"
+
+
+def fill_callouts(content: dict, stats: dict, now: dt.datetime) -> None:
+    """Replace {latest_repo}, {latest_language} and {latest_push} in the car callout rows.
+
+    Tokens keep the wording in profile_content.json while the values come from
+    GitHub on every run. If no repo is found, rows using a token are dropped.
+    """
+    latest = stats.get("latest_repo")
+    values = {}
+    if latest:
+        values = {"{latest_repo}": latest["name"], "{latest_language}": latest["language"],
+                  "{latest_push}": time_ago(latest["pushed_at"], now)}
+    for callout in content.get("car_callouts", []):
+        rows = []
+        for value, name in callout["rows"]:
+            if "{" in value:
+                if not values:
+                    continue
+                for token, real in values.items():
+                    value = value.replace(token, real)
+            rows.append([value, name])
+        callout["rows"] = rows or [["-", "no data"]]
 
 
 # --------------------------------------------------------------------------
@@ -324,6 +374,7 @@ def main() -> None:
     streaks = compute_streaks(days, today)
     stats = fetch_stats()
     grade, percentile = rank(stats)
+    fill_callouts(content, stats, now)
     year_total = sum(days.get(today - dt.timedelta(days=offset), 0) for offset in range(365))
 
     svg = dashboard.build(

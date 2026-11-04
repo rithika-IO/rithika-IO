@@ -1,5 +1,5 @@
 {
-  "_readme": "Content for the profile image (drawn by dashboard.py). profile.full_name and race_number appear in the header. car_callouts are the five cards that cycle around the car photo; spot is one of front_left, front_right, cockpit, rear_left, rear_right. status.performance gives the four Car setup grades. trophies, tech_stack and radio_messages fill their panels. In tech_stack, text_width is the label width in pixels at 16px bold (leave it out and it is estimated) and icon is an SVG path on a 24x24 grid from simpleicons.org (null for a plain dot).",
+  "_readme": "Content for the profile image (drawn by dashboard.py). profile.full_name and race_number appear in the header. car_callouts are the five cards that cycle around the car photo; spot is one of front_left, front_right, cockpit, rear_left, rear_right. status.performance gives the four Car setup grades. trophies, tech_stack and radio_messages fill their panels. In tech_stack, text_width is the label width in pixels at 16px bold (leave it out and it is estimated) and icon is an SVG path on a 24x24 grid from simpleicons.org (null for a plain dot). In car_callouts rows, {latest_repo}, {latest_language} and {latest_push} are replaced on every run with your most recently pushed public repo (the profile repo itself is skipped), its main language and how long ago it was pushed.",
   "profile": {
     "full_name": "Rithika Mandiv",
     "name": "RITHIKA MANDIV",
@@ -529,16 +529,16 @@
       "title": "Driver",
       "rows": [
         [
-          "stackrun",
+          "{latest_repo}",
           "currently building"
         ],
         [
-          "Go · Rust",
-          "learning"
+          "{latest_language}",
+          "main language"
         ],
         [
-          "Reliability",
-          "race mode"
+          "{latest_push}",
+          "last push"
         ]
       ]
     }

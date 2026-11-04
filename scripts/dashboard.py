@@ -210,6 +210,7 @@ def car_section(x, y, w, h, callouts: list[dict]) -> str:
                 text(card_x + 18, cy + 46, c["title"], 17, FG, 500)]
         for r, (value, name) in enumerate(c["rows"]):
             ry = cy + 86 + r * 46
+            value = value if len(value) <= 20 else value[:19] + "…"      # long repo names must fit the card
             body += [text(card_x + 18, ry, value, 22 if r == 0 and len(value) < 10 else 15, colour if r == 0 else FG, 600), label(card_x + 18, ry + 17, name)]
         card.append(f'<g opacity="{1 if i == 0 else 0}">{timed_opacity(i, n)}{"".join(body)}</g>')
     parts.append(f'<g>{slide}{"".join(card)}</g>')
