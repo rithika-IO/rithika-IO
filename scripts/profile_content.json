@@ -1,5 +1,5 @@
 {
-  "_readme": "Content for the profile image (drawn by dashboard.py). profile.full_name and race_number appear in the header. car_callouts are the four skill cards at the tyres; spot is front_left, front_right, rear_left or rear_right. The cockpit shows one card per public repo, read from GitHub on every run and interleaved with the skill cards. repo_showcase controls it: limit caps how many repos (null = all, newest pushes first), hide lists repo names to leave out, and types sets a repo's project type by name, e.g. {\"CareNexus\": \"Enterprise app\"}, when the automatic guess is wrong. status.performance gives the four Car setup grades. trophies, tech_stack and radio_messages fill their panels. In tech_stack, text_width is the label width in pixels at 16px bold (leave it out and it is estimated) and icon is an SVG path on a 24x24 grid from simpleicons.org (null for a plain dot).",
+  "_readme": "Content for the profile image (drawn by dashboard.py). profile.full_name and race_number appear in the header. car_callouts are the four skill cards at the tyres; spot is front_left, front_right, rear_left or rear_right. The cockpit shows one card per public repo, read from GitHub on every run and interleaved with the skill cards. repo_showcase controls it: limit caps how many repos (null = all, newest pushes first), hide lists repo names to leave out, and types sets a repo's project type by name, e.g. {\"CareNexus\": \"Enterprise app\"}, when the automatic guess is wrong. trophies, tech_stack and radio_messages fill their panels. In tech_stack, text_width is the label width in pixels at 16px bold (leave it out and it is estimated) and icon is an SVG path on a 24x24 grid from simpleicons.org (null for a plain dot). quotes rotate in the band under the header, 7 seconds each; keep each under about 120 characters so it fits on two lines. driver_profile is the JSON-style card next to Powertrain: a list of [key, value] pairs, where a value can be a list (about 12 printed lines fit, braces included).",
   "profile": {
     "full_name": "Rithika Mandiv",
     "name": "RITHIKA MANDIV",
@@ -532,5 +532,49 @@
       "product_api": "Backend service",
       "aircraft-tracker": "Full-stack"
     }
-  }
+  },
+  "quotes": [
+    {
+      "text": "Dream the impossible and speak it into existence.",
+      "author": "Lewis Hamilton",
+      "note": "after his seventh world title, 2020 Turkish GP"
+    },
+    {
+      "text": "If you no longer go for a gap that exists, you are no longer a racing driver.",
+      "author": "Ayrton Senna",
+      "note": "interview with Jackie Stewart, 1990"
+    },
+    {
+      "text": "I will do everything I can to win. I hate losing.",
+      "author": "Max Verstappen",
+      "note": "four-time world champion"
+    }
+  ],
+  "driver_profile": [
+    [
+      "name",
+      "Rithika Mandiv"
+    ],
+    [
+      "location",
+      "Sri Lanka"
+    ],
+    [
+      "status",
+      "Undergraduate"
+    ],
+    [
+      "degree",
+      "Software Engineering"
+    ],
+    [
+      "interests",
+      [
+        "Backend Engineering",
+        "Full-Stack Development",
+        "Software Quality & Testing",
+        "Machine Learning"
+      ]
+    ]
+  ]
 }

@@ -349,7 +349,7 @@ def describe_event(event: dict) -> tuple[str, str] | None:
     return None
 
 
-def fetch_events(now: dt.datetime, limit: int = 4) -> list[dict]:
+def fetch_events(now: dt.datetime, limit: int = 5) -> list[dict]:
     """The latest public activity, newest first, with back-to-back pushes to one repo merged.
 
     This panel is a nice-to-have, so any API failure gives an empty list
@@ -404,7 +404,7 @@ def main() -> None:
     streaks = compute_streaks(days, today)
     stats = fetch_stats()
     grade, percentile = rank(stats)
-    content["repo_cards"] = repo_cards(stats["repos"], content.get("repo_showcase", {}), now)
+    content["repo_cards"] = repo_cards(stats.get("repos", []), content.get("repo_showcase", {}), now)
     year_total = sum(days.get(today - dt.timedelta(days=offset), 0) for offset in range(365))
 
     svg = dashboard.build(

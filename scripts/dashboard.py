@@ -28,7 +28,8 @@ LINE = "#ECE7E014"                                  # hairline borders: cream at
 PANEL_BG = "#121214"
 SANS = "'Inter','Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif"
 MONO = "'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace"
-W = 1200
+W = 900                                     # close to GitHub's README width, so text shows near real size
+HALF = (W - 40 - 14) / 2                    # width of a panel when two share a row
 GAP = 14
 
 # Top-down car photo (nose up). Positions below are in the photo's own units
@@ -36,6 +37,10 @@ GAP = 14
 # whatever size the photo is drawn at.
 CAR_PHOTO = Path(os.environ.get("CAR_PHOTO", Path(__file__).resolve().parent.parent / "assets" / "car-top.jpg"))
 PHOTO_W, PHOTO_H = 1200, 2800
+# The RW monogram, cut out of the brand tile as white lettering on transparency.
+# It is used as a mask, so the letters can take any palette colour.
+BRAND_MARK = CAR_PHOTO.with_name("rw-mark.png")
+MARK_W, MARK_H = 144, 88
 PHOTO_SPOTS = {"front_left": (244, 637), "front_right": (947, 637), "cockpit": (590, 1204),
                "rear_left": (250, 2170), "rear_right": (942, 2170)}
 
@@ -105,12 +110,12 @@ def gauge(cx, cy, r, fraction, value, unit, lo, hi, colour=PINK) -> str:
         on = (i + 0.5) / segs <= fraction
         tint = colour if on else FG
         op = 0.35 + 0.65 * (i / segs) if on else 0.07
-        out.append(f'<path d="{arc_path(cx, cy, r, a0, a1)}" fill="none" stroke="{tint}" stroke-width="9" opacity="{op:.2f}"/>')
-    out.append(f'<path d="{arc_path(cx, cy, r - 10, start, start + sweep * max(fraction, 0.01))}" fill="none" stroke="{colour}" stroke-width="1.5" opacity="0.6"/>')
-    out.append(label(cx, cy - 6, unit, MUTED, 8, "middle"))
-    out.append(text(cx, cy + 14, value, 18, FG, 600, "middle"))
-    out.append(label(cx - r * 0.72, cy + r + 10, lo, MUTED, 8.5, "middle"))
-    out.append(label(cx + r * 0.72, cy + r + 10, hi, MUTED, 8.5, "middle"))
+        out.append(f'<path d="{arc_path(cx, cy, r, a0, a1)}" fill="none" stroke="{tint}" stroke-width="{r * 0.26:.1f}" opacity="{op:.2f}"/>')
+    out.append(f'<path d="{arc_path(cx, cy, r - r * 0.3, start, start + sweep * max(fraction, 0.01))}" fill="none" stroke="{colour}" stroke-width="1.5" opacity="0.6"/>')
+    out.append(label(cx, cy - r * 0.2, unit, MUTED, 9, "middle"))
+    out.append(text(cx, cy + r * 0.38, value, round(r * 0.5), FG, 600, "middle"))
+    out.append(label(cx - r * 0.72, cy + r + 12, lo, MUTED, 9, "middle"))
+    out.append(label(cx + r * 0.72, cy + r + 12, hi, MUTED, 9, "middle"))
     return "".join(out)
 
 
@@ -120,34 +125,64 @@ def gauge(cx, cy, r, fraction, value, unit, lo, hi, colour=PINK) -> str:
 ACCENTS = [PINK, TEAL, ORANGE, YELLOW, GREEN, CORAL]      # cycled for languages and badges
 
 
+def brand_tile(x, y, size) -> str:
+    """The RW monogram on a dark rounded tile, with a pink speed stripe underneath."""
+    mw = size * 0.78
+    mh = mw * MARK_H / MARK_W
+    mx, my = x + (size - mw) / 2, y + (size - mh) / 2 - 3
+    return (f'<rect x="{x}" y="{y}" width="{size}" height="{size}" rx="{size * 0.24:.1f}" fill="{INK}" stroke="{PINK}" stroke-opacity="0.55" stroke-width="1.5"/>'
+            f'<rect x="0" y="0" width="{MARK_W}" height="{MARK_H}" fill="{FG}" mask="url(#rwmask)" '
+            f'transform="translate({mx:.1f},{my:.1f}) scale({mw / MARK_W:.4f})"/>'
+            f'<path d="M{x + size * 0.30:.1f},{y + size * 0.84:.1f} H{x + size * 0.78:.1f} l-4,4 H{x + size * 0.26:.1f} Z" fill="{PINK}"/>')
+
+
 def header(profile: dict, stats: dict, streaks: dict, grade: str) -> tuple[str, int]:
-    h = 84
+    """Row 1: logo and driver chip. Row 2: six stat tiles across the full width."""
+    h = 160
     parts = [
         f'<rect x="0" y="0" width="{W}" height="{h}" fill="{BG}"/>',
-        f'<rect x="0" y="{h - 1}" width="{W}" height="1" fill="{LINE}"/>',
-        f'<g transform="translate(26,24)"><path d="M0,0 L18,0 L26,14 L34,0 L52,0 L26,36 Z" fill="{PINK}" fill-opacity="0.15" stroke="{PINK}" stroke-width="3" stroke-linejoin="round"/></g>',
-        text(92, 50, "Mission Control", 19, FG, 600),
-        live_dot(258, 44),
+        brand_tile(20, 14, 56),
+        text(92, 48, "Mission Control", 20, FG, 600),
+        live_dot(262, 42),
     ]
-    cells = [("COMMITS", f'{stats["commits"]:,}', TEAL), ("STARS", stats["stars"], YELLOW),
-             ("PULL REQS", stats["prs"], ORANGE)]
-    for i, (k, v, colour) in enumerate(cells):
-        x = 300 + i * 112
-        parts += [f'<rect x="{x}" y="24" width="14" height="3" rx="1.5" fill="{colour}"/>', label(x, 42, k), text(x, 64, v, 18, FG, 500)]
-    race = [("STREAK", f'{streaks["current"]["length"]}', f'/{streaks["longest"]["length"]}'), ("GRADE", grade, ""), ("CONTRIBS", f'{streaks["total"]:,}', "")]
-    for i, (k, v, suffix) in enumerate(race):
-        x = 676 + i * 96
-        parts += [label(x, 42, k), text(x, 64, v, 18, FG, 500)]
-        if suffix:
-            parts.append(text(x + len(v) * 11 + 2, 64, suffix, 13, MUTED))
-    cx = W - 232
+    cx = W - 240
     parts += [
-        f'<rect x="{cx}" y="16" width="208" height="52" rx="26" fill="{PANEL_BG}" stroke="{LINE}"/>',
+        f'<rect x="{cx}" y="16" width="220" height="52" rx="26" fill="{PANEL_BG}" stroke="{LINE}"/>',
         f'<circle cx="{cx + 26}" cy="42" r="19" fill="{PINK}"/>',
         text(cx + 26, 48, profile["race_number"], 16, INK, 800, "middle", extra='font-style="italic"'),
         label(cx + 54, 36, "DRIVER"),
         text(cx + 54, 57, profile["full_name"], 15, FG, 500),
     ]
+    tiles = [("COMMITS", f'{stats["commits"]:,}', "", TEAL), ("STARS", f'{stats["stars"]}', "", YELLOW),
+             ("PULL REQS", f'{stats["prs"]}', "", ORANGE), ("STREAK", f'{streaks["current"]["length"]}', f'/{streaks["longest"]["length"]}', GREEN),
+             ("GRADE", grade, "", PINK), ("CONTRIBS", f'{streaks["total"]:,}', "", CORAL)]
+    gap = 10
+    tw = (W - 40 - gap * (len(tiles) - 1)) / len(tiles)
+    for i, (key, value, suffix, colour) in enumerate(tiles):
+        tx = 20 + i * (tw + gap)
+        parts += [f'<rect x="{tx:.1f}" y="88" width="{tw:.1f}" height="60" rx="12" fill="{PANEL_BG}" stroke="{LINE}"/>',
+                  f'<rect x="{tx + 14:.1f}" y="100" width="14" height="3" rx="1.5" fill="{colour}"/>',
+                  label(tx + 14, 118, key), text(tx + 14, 140, value, 19, FG, 600)]
+        if suffix:
+            parts.append(text(tx + 16 + len(value) * 11.5, 140, suffix, 13, MUTED))
+    return "".join(parts), h
+
+
+QUOTE_STEP = 7.0                                                 # seconds per quote: longer lines need reading time
+
+
+def quote_band(x, y, w, quotes: list[dict]) -> tuple[str, int]:
+    """Pit-wall style banner that rotates through driver quotes (two lines at most each)."""
+    h, n = 150, len(quotes)
+    parts = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="16" fill="{PANEL_BG}" stroke="{LINE}"/>',
+             f'<rect x="{x}" y="{y + 22}" width="4" height="{h - 44}" rx="2" fill="{PINK}"/>',
+             text(x + 28, y + 78, "“", 60, PINK, 700, extra='opacity="0.9"')]
+    for i, q in enumerate(quotes):
+        lines = wrap(q["text"], int((w - 100) / 12))[:2]
+        top = y + 62 + (2 - len(lines)) * 16                     # one-line quotes sit in the middle of the band
+        body = "".join(text(x + 64, top + k * 32, line, 23, FG, 500, extra='font-style="italic"') for k, line in enumerate(lines))
+        body += label(x + 64, top + len(lines) * 32, f'{q["author"]} · {q["note"]}', MUTED, 10)
+        parts.append(f'<g opacity="{1 if i == 0 else 0}">{timed_opacity(i, n, step=QUOTE_STEP) if n > 1 else ""}{body}</g>')
     return "".join(parts), h
 
 
@@ -177,32 +212,32 @@ def callout_sequence(skills: list[dict], repos: list[dict]) -> list[dict]:
     return [card for repo in repos for card in (*skills, repo)]
 
 
-def timed_opacity(i: int, n: int, fade_s: float = 0.4) -> str:
+def timed_opacity(i: int, n: int, fade_s: float = 0.4, step: float = CYCLE_STEP) -> str:
     """SMIL opacity track: visible only during slot i of n, so the slots take turns in one shared loop.
 
     keyTimes are fractions of the whole loop, so the fade is converted from
     seconds; that keeps it 0.4 s whether the loop has 5 slots or 30.
     """
     a, b = i / n, (i + 1) / n
-    fade = fade_s / (n * CYCLE_STEP)
+    fade = fade_s / (n * step)
     if i == 0:
         times, values = [0, b - fade, b, 1], [1, 1, 0, 0]
     else:
         times, values = [0, a, a + fade / 2, b - fade, b, 1], [0, 0, 1, 1, 0, 0]
-    return (f'<animate attributeName="opacity" dur="{n * CYCLE_STEP}s" repeatCount="indefinite" '
+    return (f'<animate attributeName="opacity" dur="{n * step}s" repeatCount="indefinite" '
             f'keyTimes="{";".join(f"{t:.4f}" for t in times)}" values="{";".join(map(str, values))}"/>')
 
 
 def car_section(x, y, w, h, callouts: list[dict]) -> str:
     """Photo plus one callout card that travels between the markers on a loop (like a telemetry readout)."""
     s = (h - 16) / PHOTO_H                                       # fit the photo to the column height
-    left, top = x + w * 0.635 - PHOTO_W * s / 2, y + 8
+    left, top = x + w * 0.6 - PHOTO_W * s / 2, y + 8
     to_screen = lambda px, py: (left + px * s, top + py * s)     # photo units -> screen
     parts = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="16" fill="url(#carglow)"/>', car_photo(left, top, s)]
     parts += [hotspot(*to_screen(*xy)) for xy in PHOTO_SPOTS.values()]
 
     n = len(callouts)
-    card_x, card_w, card_h = x + 18, 190, 214
+    card_x, card_w, card_h = x + 24, 236, 220
     card_ys = []
     for i, c in enumerate(callouts):
         sx, sy = to_screen(*PHOTO_SPOTS[c["spot"]])
@@ -227,10 +262,10 @@ def car_section(x, y, w, h, callouts: list[dict]) -> str:
     for i, c in enumerate(callouts):
         colour = c["accent"]
         body = [f'<rect x="{card_x + 18}" y="{cy + 18:.1f}" width="22" height="3" rx="1.5" fill="{colour}"/>',
-                text(card_x + 18, cy + 46, c["title"] if len(c["title"]) <= 16 else c["title"][:15] + "…", 17, FG, 500)]
+                text(card_x + 18, cy + 46, c["title"] if len(c["title"]) <= 20 else c["title"][:19] + "…", 18, FG, 500)]
         for r, (value, name) in enumerate(c["rows"]):
             ry = cy + 86 + r * 46
-            value = value if len(value) <= 20 else value[:19] + "…"      # long repo names must fit the card
+            value = value if len(value) <= 24 else value[:23] + "…"      # long repo names must fit the card
             body += [text(card_x + 18, ry, value, 22 if r == 0 and len(value) < 10 else 15, colour if r == 0 else FG, 600), label(card_x + 18, ry + 17, name)]
         card.append(f'<g opacity="{1 if i == 0 else 0}">{timed_opacity(i, n)}{"".join(body)}</g>')
     parts.append(f'<g>{slide}{"".join(card)}</g>')
@@ -292,20 +327,45 @@ def gauges(x, y, w, h, streaks: dict, grade: str, percentile: float, year_total:
              (streaks["current"]["length"] / max(streaks["longest"]["length"], 1), f'{streaks["current"]["length"]}D', "STREAK", "0", f'{streaks["longest"]["length"]}', GREEN),
              ((100 - percentile) / 100, grade, "POWER", "C", "S", YELLOW)]
     for i, (frac, val, unit, lo, hi, colour) in enumerate(cells):
-        parts.append(gauge(x + w / 6 + i * w / 3, y + h / 2 - 4, 31, frac, val, unit, lo, hi, colour))
+        parts.append(gauge(x + w / 6 + i * w / 3, y + h / 2 - 6, min(h * 0.3, w / 8), frac, val, unit, lo, hi, colour))
     return "".join(parts)
 
 
-def car_setup(x, y, w, h, areas: list[dict]) -> str:
-    """Like the reference's brake panel: a small chassis in the middle, one reading at each corner."""
-    parts = [panel(x, y, w, h, "Car setup")]
-    s = 178 / PHOTO_H                                            # about 178 px nose to tail
-    car_len, car_wid = PHOTO_H * s, PHOTO_W * s
-    parts.append(car_photo(x + (w - car_len) / 2, y + h / 2 + 18 - car_wid / 2, s, rotate=True))
-    colours = [TEAL, YELLOW, ORANGE, GREEN]
-    corners = [(x + 20, y + 74, "start"), (x + w - 20, y + 74, "end"), (x + 20, y + h - 44, "start"), (x + w - 20, y + h - 44, "end")]
-    for (lx, ly, anc), area, colour in zip(corners, areas[:4], colours):
-        parts += [label(lx, ly, area["area"], MUTED, 9.5, anc), text(lx, ly + 24, area["grade"], 20, colour, 600, anc)]
+def driver_profile(x, y, w, h, rows: list) -> str:
+    """An "about me" written as a JSON file, with editor-style syntax colours."""
+    parts = [panel(x, y, w, h, "Driver profile"),
+             f'<rect x="{x + w - 120}" y="{y + 20}" width="100" height="22" rx="6" fill="{INK}" stroke="{LINE}"/>',
+             text(x + w - 70, y + 35, "driver.json", 10.5, MUTED, 500, "middle", MONO)]
+    size, step = 13, 22
+    char = size * 0.6                                          # monospace glyph width
+    lines = []                                                 # each line is a list of (text, colour) pieces
+
+    def value_piece(value):
+        if isinstance(value, (int, float)) or str(value).isdigit():
+            return (str(value), YELLOW)                        # numbers unquoted, like real JSON
+        return (f'"{value}"', FG)
+
+    lines.append([("{", PINK)])
+    for i, (key, value) in enumerate(rows):
+        comma = [(",", MUTED)] if i < len(rows) - 1 else []
+        head = [("  ", FG), (f'"{key}"', TEAL), (": ", MUTED)]
+        if isinstance(value, list):
+            lines.append(head + [("[", PINK)])
+            for j, item in enumerate(value):
+                lines.append([("    ", FG), value_piece(item)] + ([(",", MUTED)] if j < len(value) - 1 else []))
+            lines.append([("  ", FG), ("]", PINK)] + comma)
+        else:
+            lines.append(head + [value_piece(value)] + comma)
+    lines.append([("}", PINK)])
+
+    ly = y + 78
+    for line in lines:
+        cx = x + 22
+        for piece, colour in line:
+            if piece.strip():
+                parts.append(text(cx, ly, piece, size, colour, 500 if colour == TEAL else 400, family=MONO, extra='xml:space="preserve"'))
+            cx += char * len(piece)
+        ly += step
     return "".join(parts)
 
 
@@ -315,9 +375,10 @@ def system_logs(x, y, w, h, events: list[dict]) -> str:
     parts += [f'<rect x="{x + 10}" y="{y + 52}" width="{w - 20}" height="26" rx="8" fill="{INK}"/>',
               label(tx, y + 69, "TIME", MUTED, 9), label(sx, y + 69, "SYSTEM", MUTED, 9), label(stx, y + 69, "STATUS", MUTED, 9, "end")]
     kinds = {"push": TEAL, "pr": YELLOW, "create": GREEN, "issue": CORAL, "star": ORANGE}
-    for i, ev in enumerate(events[:4]):
-        ry = y + 102 + i * 30
-        repo = ev["repo"] if len(ev["repo"]) <= 12 else ev["repo"][:11] + "…"
+    for i, ev in enumerate(events[:5]):
+        ry = y + 106 + i * 36
+        limit = int((w - 190) / 7.5)
+        repo = ev["repo"] if len(ev["repo"]) <= limit else ev["repo"][:limit - 1] + "…"
         parts += [text(tx, ry, ev["time"], 11, FG, 500, family=MONO), text(sx, ry, repo, 12, FG, 500),
                   label(stx, ry, ev["status"], kinds.get(ev["kind"], MUTED), 9, "end")]
     if not events:
@@ -327,24 +388,24 @@ def system_logs(x, y, w, h, events: list[dict]) -> str:
 
 def build_top(content: dict, stats: dict, streaks: dict, grade: str, percentile: float,
               daily: list[int], year_total: int, events: list[dict]) -> tuple[str, int]:
-    head, hh = header(content["profile"], stats, streaks, grade)
-    y = hh + 20
-    row_h = 640
-    car_w, mid_w = 540, 330
-    right_w = W - 40 - car_w - mid_w - 2 * GAP
-    mx, rx = 20 + car_w + GAP, 20 + car_w + GAP + mid_w + GAP
-    perf = content["status"]["performance"]
-    g_h, s_h = 150, 236
-    body = [
-        head,
-        car_section(20, y, car_w, row_h, callout_sequence(content["car_callouts"], content.get("repo_cards", []))),
-        powertrain(mx, y, mid_w, 360, stats["languages"]),
-        engine_load(mx, y + 360 + GAP, mid_w, row_h - 360 - GAP, daily),
-        gauges(rx, y, right_w, g_h, streaks, grade, percentile, year_total),
-        car_setup(rx, y + g_h + GAP, right_w, s_h, perf),
-        system_logs(rx, y + g_h + s_h + 2 * GAP, right_w, row_h - g_h - s_h - 2 * GAP, events),
-    ]
-    return "\n".join(body), y + row_h + 20
+    """Header, quote, car, then the telemetry panels: one per row, or two side by side."""
+    x2 = 20 + HALF + GAP                                       # left edge of a right-hand panel
+    head, y = header(content["profile"], stats, streaks, grade)
+    body = [head]
+    if content.get("quotes"):
+        q, qh = quote_band(20, y, W - 40, content["quotes"])
+        body.append(q)
+        y += qh + GAP
+    car_h = 640
+    body.append(car_section(20, y, W - 40, car_h, callout_sequence(content["car_callouts"], content.get("repo_cards", []))))
+    y += car_h + GAP
+    body.append(gauges(20, y, W - 40, 190, streaks, grade, percentile, year_total))
+    y += 190 + GAP
+    body += [powertrain(20, y, HALF, 360, stats["languages"]), driver_profile(x2, y, HALF, 360, content["driver_profile"])]
+    y += 360 + GAP
+    body.append(engine_load(20, y, W - 40, 260, daily))
+    y += 260 + GAP
+    return "\n".join(body), y
 
 
 # --------------------------------------------------------------------------
@@ -383,7 +444,7 @@ def team_radio(x, y, w, h, messages: list[str]) -> str:
     parts.append(pill(x + w - 20, y + 20, "CH 1", PINK, "end"))
     parts.append(label(x + 20, y + 92, "RACE ENGINEER", PINK, 9.5))
     for i, message in enumerate(messages):
-        lines = wrap("“" + message + "”", 44)
+        lines = wrap("“" + message + "”", int((w - 40) / 10.5))
         body = "".join(text(x + 20, y + 124 + k * 28, line, 20, FG, 400, extra='font-style="italic"') for k, line in enumerate(lines))
         parts.append(f'<g opacity="{1 if i == 0 else 0}">{timed_opacity(i, n)}{body}</g>')
     # waveform: each bar breathes at its own pace, which reads as speech
@@ -414,44 +475,46 @@ TROPHY_ACCENTS = [YELLOW, PURPLE, TEAL, GREEN, PINK, ORANGE]
 
 def trophies(x, y, w, h, items: list[dict]) -> str:
     parts = [panel(x, y, w, h, "Trophies", f"{len(items)} specialties")]
-    cols, gap = 2, 10
-    tw, th = (w - 40 - gap * (cols - 1)) / cols, 52
+    cols, gap = (3 if w > 700 else 2), 10
+    tw, th = (w - 40 - gap * (cols - 1)) / cols, 56
     for i, t in enumerate(items[:6]):
-        tx, ty = x + 20 + (i % cols) * (tw + gap), y + 68 + (i // cols) * (th + gap)
+        tx, ty = x + 20 + (i % cols) * (tw + gap), y + 70 + (i // cols) * (th + gap)
         colour = TROPHY_ACCENTS[i % len(TROPHY_ACCENTS)]
         parts += [f'<rect x="{tx:.1f}" y="{ty}" width="{tw:.1f}" height="{th}" rx="12" fill="{INK}" stroke="{LINE}"/>',
                   f'<circle cx="{tx + 30:.1f}" cy="{ty + th / 2}" r="17" fill="{colour}" fill-opacity="0.14" stroke="{colour}" stroke-opacity="0.5"/>',
                   f'<path d="{TROPHY_ICONS.get(t["icon"], TROPHY_ICONS["trophy"])}" fill="none" stroke="{colour}" stroke-width="1.9" stroke-linecap="round" '
                   f'stroke-linejoin="round" transform="translate({tx + 21:.1f},{ty + th / 2 - 9}) scale(0.75)"/>',
-                  text(tx + 58, ty + 23, t["name"], 13, FG, 600),
-                  label(tx + 58, ty + 39, t["tech"], MUTED, 9)]
+                  text(tx + 58, ty + 25, t["name"], 13.5, FG, 600),
+                  label(tx + 58, ty + 42, t["tech"], MUTED, 9)]
     return "".join(parts)
 
 
 def garage(x, y, w, categories: list[dict]) -> tuple[str, int]:
-    """The tech stack as a parts list: one row per category, each part a dark chip with its brand icon."""
-    row_h, top = 40, y + 70
-    h = 70 + row_h * len(categories) + 10
-    parts = [panel(x, y, w, h, "Garage", "Parts fitted to the car")]
+    """The tech stack as a parts list: one block per category, dark chips that wrap onto new lines."""
+    chip_h, line_gap, chips_x, right = 30, 8, x + 210, x + w - 20
+    parts, ry = [], y + 70
     for r, cat in enumerate(categories):
-        ry = top + r * row_h
         if r:
-            parts.append(f'<rect x="{x + 20}" y="{ry - 6}" width="{w - 40}" height="1" fill="{LINE}"/>')
-        parts += [f'<rect x="{x + 20}" y="{ry + 13}" width="3" height="10" rx="1.5" fill="{ACCENTS[r % len(ACCENTS)]}"/>',
-                  label(x + 32, ry + 22, cat["category"], MUTED, 9.5)]
-        cx = x + 240
+            parts.append(f'<rect x="{x + 20}" y="{ry - 9}" width="{w - 40}" height="1" fill="{LINE}"/>')
+        parts += [f'<rect x="{x + 20}" y="{ry + 11}" width="3" height="10" rx="1.5" fill="{ACCENTS[r % len(ACCENTS)]}"/>',
+                  label(x + 32, ry + 20, cat["category"], MUTED, 9.5)]
+        cx, line_y = chips_x, ry
         for item in cat["items"]:
             tw = item.get("text_width", len(item["label"]) * 9.5) * 0.74
             cw = tw + (40 if item.get("icon") else 24)
+            if cx + cw > right and cx > chips_x:                      # no room left on this line
+                cx, line_y = chips_x, line_y + chip_h + line_gap
             colour = readable(item.get("colour") or FG)
-            parts.append(f'<rect x="{cx:.1f}" y="{ry + 2}" width="{cw:.1f}" height="30" rx="15" fill="{INK}" stroke="{LINE}"/>')
+            parts.append(f'<rect x="{cx:.1f}" y="{line_y}" width="{cw:.1f}" height="{chip_h}" rx="15" fill="{INK}" stroke="{LINE}"/>')
             if item.get("icon"):
-                parts.append(f'<path d="{item["icon"]}" fill="{colour}" transform="translate({cx + 12:.1f},{ry + 10}) scale({14 / 24:.4f})"/>')
-                parts.append(text(cx + 32, ry + 21.5, item["label"], 12, FG, 500))
+                parts.append(f'<path d="{item["icon"]}" fill="{colour}" transform="translate({cx + 12:.1f},{line_y + 8}) scale({14 / 24:.4f})"/>')
+                parts.append(text(cx + 32, line_y + 19.5, item["label"], 12, FG, 500))
             else:
-                parts.append(f'<circle cx="{cx + 14:.1f}" cy="{ry + 17}" r="3" fill="{colour}"/>' + text(cx + 22, ry + 21.5, item["label"], 12, FG, 500))
+                parts.append(f'<circle cx="{cx + 14:.1f}" cy="{line_y + 15}" r="3" fill="{colour}"/>' + text(cx + 22, line_y + 19.5, item["label"], 12, FG, 500))
             cx += cw + 8
-    return "".join(parts), h
+        ry = line_y + chip_h + 20
+    h = ry - y
+    return panel(x, y, w, h, "Garage", "Parts fitted to the car") + "".join(parts), h
 
 
 SNAKE_PALETTE = {"--cb": "#00000000", "--cs": PINK, "--ce": "#232327",
@@ -484,15 +547,15 @@ def track_map(x, y, w, snake_svg: str) -> tuple[str, int]:
 
 def footer(y, synced: str, login: str) -> tuple[str, int]:
     return (label(20, y + 16, f"LAST SYNC {synced}", MUTED, 9) +
-            label(W - 20, y + 16, f"REBUILT EVERY 12H · DATA FROM THE GITHUB API · @{login}", MUTED, 9, "end")), 34
+            label(W - 20, y + 16, f"REBUILT EVERY 12H · @{login}", MUTED, 9, "end")), 34
 
 
-def build_bottom(content: dict, y: int, snake_svg: str, synced: str, login: str) -> tuple[str, int]:
-    radio_w = 560
-    row_h = 258
-    parts = [team_radio(20, y, radio_w, row_h, content["radio_messages"]),
-             trophies(20 + radio_w + GAP, y, W - 40 - radio_w - GAP, row_h, content["trophies"])]
+def build_bottom(content: dict, y: int, events: list[dict], snake_svg: str, synced: str, login: str) -> tuple[str, int]:
+    row_h = 290
+    parts = [system_logs(20, y, HALF, row_h, events), team_radio(20 + HALF + GAP, y, HALF, row_h, content["radio_messages"])]
     y += row_h + GAP
+    parts.append(trophies(20, y, W - 40, 210, content["trophies"]))
+    y += 210 + GAP
     g, gh = garage(20, y, W - 40, content["tech_stack"])
     parts.append(g)
     y += gh + GAP
@@ -508,7 +571,7 @@ def build(content: dict, stats: dict, streaks: dict, grade: str, percentile: flo
           events: list[dict], snake_svg: str, synced: str, login: str) -> str:
     """The whole profile image, top to bottom."""
     top, y = build_top(content, stats, streaks, grade, percentile, daily, year_total, events)
-    bottom, height = build_bottom(content, y, snake_svg, synced, login)
+    bottom, height = build_bottom(content, y, events, snake_svg, synced, login)
     p = content["profile"]
     summary = (f'{p["full_name"]}, number {p["race_number"]}: GitHub mission-control dashboard. '
                f'{stats["commits"]} commits, {stats["stars"]} stars, {stats["prs"]} pull requests, '
@@ -517,6 +580,10 @@ def build(content: dict, stats: dict, streaks: dict, grade: str, percentile: flo
                + "Tech stack: " + "; ".join(f'{c["category"]}: {", ".join(i["label"] for i in c["items"])}' for c in content["tech_stack"]) + ".")
     return document(top + "\n" + bottom, height + 6, summary)
 
+
+
+def mark_uri() -> str:
+    return "data:image/png;base64," + base64.b64encode(BRAND_MARK.read_bytes()).decode("ascii")
 
 
 def photo_uri() -> str:
@@ -533,6 +600,7 @@ def defs() -> str:
     <mask id="photofade" maskUnits="userSpaceOnUse" x="0" y="0" width="{PHOTO_W}" height="{PHOTO_H}">
       <rect x="70" y="60" width="{PHOTO_W - 140}" height="{PHOTO_H - 120}" rx="160" fill="#fff" filter="url(#feather)"/>
     </mask>
+    <mask id="rwmask" maskUnits="userSpaceOnUse"><image href="{mark_uri()}" x="0" y="0" width="{MARK_W}" height="{MARK_H}"/></mask>
     <g id="carphoto"><image href="{photo_uri()}" width="{PHOTO_W}" height="{PHOTO_H}" preserveAspectRatio="none" mask="url(#photofade)"/></g>
   </defs>'''
 
