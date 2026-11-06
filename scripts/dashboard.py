@@ -233,7 +233,8 @@ def car_section(x, y, w, h, callouts: list[dict]) -> str:
     s = (h - 16) / PHOTO_H                                       # fit the photo to the column height
     left, top = x + w * 0.6 - PHOTO_W * s / 2, y + 8
     to_screen = lambda px, py: (left + px * s, top + py * s)     # photo units -> screen
-    parts = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="16" fill="url(#carglow)"/>', car_photo(left, top, s)]
+    # black panel: the photo's road surface was regraded to the same near-black, so the car blends in
+    parts = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="16" fill="{INK}" stroke="{LINE}"/>', car_photo(left, top, s)]
     parts += [hotspot(*to_screen(*xy)) for xy in PHOTO_SPOTS.values()]
 
     n = len(callouts)
@@ -595,7 +596,6 @@ def defs() -> str:
     return f'''<defs>
     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <linearGradient id="loadbar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="{CORAL}"/><stop offset="1" stop-color="{PINK}"/></linearGradient>
-    <radialGradient id="carglow" cx="0.55" cy="0.45" r="0.6"><stop offset="0" stop-color="{PINK}" stop-opacity="0.10"/><stop offset="1" stop-color="{PINK}" stop-opacity="0"/></radialGradient>
     <filter id="feather" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="34"/></filter>
     <mask id="photofade" maskUnits="userSpaceOnUse" x="0" y="0" width="{PHOTO_W}" height="{PHOTO_H}">
       <rect x="70" y="60" width="{PHOTO_W - 140}" height="{PHOTO_H - 120}" rx="160" fill="#fff" filter="url(#feather)"/>
