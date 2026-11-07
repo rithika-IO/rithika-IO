@@ -586,23 +586,6 @@
       "english": "Beautiful things are difficult.",
       "source": "Ancient Greek proverb · quoted by Plato"
     },
-    "proportions_title": [
-      "The Proportions",
-      "of a Developer"
-    ],
-    "proportions_subtitle": "Each limb carries a craft; the centre holds the works.",
-    "limbs": {
-      "front_left": "Manus dextra · right hand",
-      "front_right": "Manus sinistra · left hand",
-      "rear_left": "Pes dexter · right foot",
-      "rear_right": "Pes sinister · left foot",
-      "cockpit": "Umbilicus · the centre"
-    },
-    "skill_row_labels": [
-      "mastery",
-      "chief tools",
-      "also wielded"
-    ],
     "repo_row_labels": [
       "craft",
       "tools",
@@ -651,6 +634,8 @@
         "tech": "C# · .NET",
         "icon": "moon"
       }
-    ]
+    ],
+    "atlas_title": "The Burden of Atlas",
+    "atlas_subtitle": "He carries the works; every turn of the globe brings another."
   }
 }

@@ -8,7 +8,8 @@ It uses the artworks and fonts below. All of the artworks are in the public doma
 | Used for | Work | Artist | Date | Source | Licence |
 |---|---|---|---|---|---|
 | Header | *The Creation of Adam* (detail), Sistine Chapel ceiling | Michelangelo Buonarroti | c. 1508–1512 | [ResearchGate figure](https://www.researchgate.net/figure/Michelangelo-The-Creation-of-Adam-Sistine-Chapel-detail_fig3_344382345) | Public domain artwork |
-| The Proportions | *Vitruvian Man* | Leonardo da Vinci | c. 1490 | [Stanford University, Leonardo da Vinci project](https://leonardodavinci.stanford.edu/submissions/clabaugh/history/leonardo.html) | Public domain artwork |
+| Persona | *Vitruvian Man* | Leonardo da Vinci | c. 1490 | [Stanford University, Leonardo da Vinci project](https://leonardodavinci.stanford.edu/submissions/clabaugh/history/leonardo.html) | Public domain artwork |
+| The Burden of Atlas | Atlas supporting the celestial sphere (pen and ink drawing) | Artist to be confirmed | Early modern | *source link to add* | Public domain artwork |
 | The Flight | *Icarus*, from *The Four Disgracers* (engraving) | Hendrick Goltzius, after Cornelis Cornelisz. van Haarlem | 1588 | [National Gallery of Art, Washington, 2012.92.125](https://www.nga.gov/artworks/152775-icarus) · [The Met, 53.601.338(4)](https://www.metmuseum.org/art/collection/search/343580) | Public domain (museum open access) |
 | Whispers of the Oracle | *Nestor Appearing in a Dream to Agamemnon* (engraving) | James Heath | 1805 | [Wikipedia: Oneiros](https://en.wikipedia.org/wiki/Oneiros) | Public domain |
 | Dream gods | Euphronios Krater (photograph of the vase) | Vase painted by Euphronios, potted by Euxitheos | c. 515 BC | [Wikipedia: Euphronios Krater](https://en.wikipedia.org/wiki/Euphronios_Krater) (photo hosted on Wikimedia Commons) | Vase: public domain. Photo: Creative Commons licence as stated on its Commons page |

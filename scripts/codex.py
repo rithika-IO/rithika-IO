@@ -11,10 +11,9 @@ Sections, top to bottom:
     header       The Creation of Adam hands, name, tagline
     motto        Greek proverb with its meaning
     offerings    six stats, each beside a Doric column
-    proportions  Vitruvian Man; a note card circles the limbs (skills) and the
-                 centre (one repo per lap)
+    atlas        Atlas carries the repos on his globe, one after another
+    tongues | persona   languages; the Vitruvian Man as the persona, interests at his limbs
     astrolabes   three dials: works this year, unbroken days, standing
-    tongues | persona
     flight       Goltzius's Icarus, 60 days of work, the sun over the fullest day
     dispatches   recent public activity
     oracle       rotating lines between the Heath engraving and the Euphronios krater
@@ -228,95 +227,112 @@ def offerings(y: float, stats: dict, streaks: dict, grade: str) -> tuple[str, in
 
 
 # --------------------------------------------------------------------------
-# The Proportions: Vitruvian Man with a note card that circles the figure
+# The Proportions: Atlas carries the notes on his sphere, the Vitruvian Man behind him
 # --------------------------------------------------------------------------
-# Points on the 480 x 600 drawing. The card visits the limbs in a circle, then the
-# centre, where each lap shows the next repo.
-SPOTS = {"front_left": (78, 157), "front_right": (402, 157), "rear_left": (134, 486), "rear_right": (348, 482), "cockpit": (240, 292)}
+ATLAS_W, ATLAS_H = 684, 1048                                  # assets/codex/atlas.png
+SPHERE = (368, 276, 286)                                      # centre and radius of the drawn sphere on that drawing
+VIT_CENTRE, VIT_RADIUS = (240, 292), 227                      # Leonardo's circle on the 480 x 600 drawing
 
 
-def note_sequence(skills: list[dict], repos: list[dict]) -> list[dict]:
-    """One lap per repo: the four limbs, then the centre with the next repo."""
-    if not repos or not skills:
-        return skills or repos
-    return [card for repo in repos for card in (*skills, repo)]
+def turning_ring(cx, cy, r) -> str:
+    """A measuring ring of ticks and Roman numerals that slowly turns around the Vitruvian Man."""
+    marks = []
+    for k in range(72):
+        deg = k * 5
+        long = k % 6 == 0
+        x0, y0 = polar(0, 0, r - (10 if long else 5), deg)
+        x1, y1 = polar(0, 0, r, deg)
+        marks.append(f'<path d="M{x0:.1f},{y0:.1f} L{x1:.1f},{y1:.1f}" stroke="{SEPIA}" stroke-width="{1.1 if long else 0.6}"/>')
+    for k, numeral in enumerate(NUMERALS):
+        lx, ly = polar(0, 0, r + 14, k * 30 - 90)
+        marks.append(t(lx, ly + 4, numeral, 10, SEPIA, SERIF, 600, "middle"))
+    return (f'<g transform="translate({cx:.1f},{cy:.1f})" opacity="0.35"><g>'
+            f'<circle r="{r}" fill="none" stroke="{SEPIA}" stroke-width="0.9"/>'
+            # outer circle drawn as a dotted line, so its turning is easy to see; 80 s per turn moves
+            # its edge at about the same speed as the serpent's scales in the Ouroboros
+            f'<circle r="{r + 28}" fill="none" stroke="{SEPIA}" stroke-width="1.1" stroke-dasharray="1 7" stroke-linecap="round"/>{"".join(marks)}'
+            f'<animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="80s" repeatCount="indefinite"/></g></g>')
 
 
-def proportions(y: float, content: dict) -> tuple[str, int]:
-    h = 660
+def sphere_text(cx, cy, card: dict) -> str:
+    """The note, simplified to fit a circle: name, then the two most useful facts."""
+    names = title_lines(card["title"], 15)
+    rows = [f"{v} · {n}" if len(str(v)) <= 3 else str(v) for v, n in card["rows"][:2]]
+    lines = [(n, 30, INK, SERIF, 600) for n in names]
+    if rows:
+        lines.append((shorten(rows[0], 22), 21, CHALK, BODY, 400))
+    if len(rows) > 1:
+        lines.append((shorten(rows[1], 26), 18, INK, BODY, 400))
+    gaps = [36 if size == 30 else 32 for _, size, *_ in lines]
+    top = cy - sum(gaps[:-1]) / 2 + 8
+    out, ly = [], top
+    for (text_, size, colour, family, weight), gap in zip(lines, gaps):
+        extra = 'font-style="italic"' if colour == CHALK else ""
+        out.append(t(cx, ly, text_, size, colour, family, weight, "middle", extra))
+        ly += gap
+    return "".join(out)
+
+
+def atlas(y: float, content: dict) -> tuple[str, int]:
+    """Atlas carries your repos on his globe, one every few seconds."""
+    h = 820
     codex = content["codex"]
-    fx, fy = W - MARGIN - 480, y + 30
-    point = lambda key: (fx + SPOTS[key][0], fy + SPOTS[key][1])
-    skill_labels, repo_labels = codex["skill_row_labels"], codex["repo_row_labels"]
-    skills = [dict(c, rows=[[v, skill_labels[i] if i < len(skill_labels) else n] for i, (v, n) in enumerate(c["rows"])])
-              for c in content["car_callouts"]]
-    repos = [dict(c, rows=[[v, repo_labels[i] if i < len(repo_labels) else n] for i, (v, n) in enumerate(c["rows"])])
+    repo_labels = codex["repo_row_labels"]
+    cards = [dict(c, rows=[[v, repo_labels[i] if i < len(repo_labels) else n] for i, (v, n) in enumerate(c["rows"])])
              for c in content.get("repo_cards", [])]
-    slots = note_sequence(skills, repos)
-
-    parts = [inked("flyermask", 330, 288, 30, y + 160, 1, SEPIA, 0.14),
-             inked("drillmask", 130, 172, 170, y + 470, 1, SEPIA, 0.13),
-             t(MARGIN, y + 46, codex["proportions_title"][0], 30, INK, SERIF, 600),
-             t(MARGIN, y + 80, codex["proportions_title"][1], 30, INK, SERIF, 600),
-             italic(MARGIN, y + 110, codex["proportions_subtitle"]),
-             inked("vitmask", 480, 600, fx, fy)]
-    for key in SPOTS:
-        sx, sy = point(key)
-        parts.append(f'<circle cx="{sx:.1f}" cy="{sy:.1f}" r="7" fill="none" stroke="{CHALK}" stroke-width="1.4">'
-                     f'<animate attributeName="r" values="7;15;7" dur="2.6s" repeatCount="indefinite"/>'
-                     f'<animate attributeName="opacity" values="0.9;0;0.9" dur="2.6s" repeatCount="indefinite"/></circle>'
-                     f'<circle cx="{sx:.1f}" cy="{sy:.1f}" r="4.5" fill="{CHALK}" stroke="{PARCH}" stroke-width="1.5"/>')
-    if not slots:
+    s = 0.66                                                    # Atlas drawn at about 450 x 690
+    ax, ay = W / 2 - ATLAS_W * s / 2 + 20, y + 108
+    sx, sy, sr = ax + SPHERE[0] * s, ay + SPHERE[1] * s, SPHERE[2] * s
+    parts = [t(W / 2, y + 44, codex["atlas_title"], 30, INK, SERIF, 600, "middle"),
+             italic(W / 2, y + 74, codex["atlas_subtitle"], 14, SEPIA, "middle"),
+             inked("flyermask", 330, 288, MARGIN - 20, y + 470, 0.8, SEPIA, 0.13),
+             inked("drillmask", 130, 172, W - MARGIN - 110, y + 520, 1, SEPIA, 0.13),
+             inked("atlasmask", ATLAS_W, ATLAS_H, ax, ay, s),
+             # the globe: a soft parchment glow so the text reads, then latitude lines and two
+             # meridians whose width breathes, which makes the sphere seem to turn
+             f'<clipPath id="sphereclip"><circle cx="{sx:.1f}" cy="{sy:.1f}" r="{sr - 4:.1f}"/></clipPath>',
+             f'<circle cx="{sx:.1f}" cy="{sy:.1f}" r="{sr - 4:.1f}" fill="url(#sphereglow)"/>',
+             f'<g clip-path="url(#sphereclip)" opacity="0.32" stroke="{SEPIA}" fill="none" stroke-width="0.7">'
+             + "".join(f'<ellipse cx="{sx:.1f}" cy="{sy + d * sr:.1f}" rx="{sr * math.sqrt(max(0.0, 1 - d * d)):.1f}" ry="{sr * 0.1 * math.sqrt(max(0.0, 1 - d * d)):.1f}"/>'
+                       for d in (-0.66, -0.33, 0.33, 0.66))
+             + f'<path d="M{sx - sr:.1f},{sy:.1f} H{sx + sr:.1f}"/>'
+             + f'<ellipse cx="{sx:.1f}" cy="{sy:.1f}" rx="{sr * 0.5:.1f}" ry="{sr:.1f}"><animate attributeName="rx" values="{sr * 0.05:.1f};{sr:.1f};{sr * 0.05:.1f}" dur="16s" repeatCount="indefinite"/></ellipse>'
+             + f'<ellipse cx="{sx:.1f}" cy="{sy:.1f}" rx="{sr:.1f}" ry="{sr:.1f}"><animate attributeName="rx" values="{sr:.1f};{sr * 0.05:.1f};{sr:.1f}" dur="16s" repeatCount="indefinite"/></ellipse></g>']
+    if not cards:
+        parts.append(italic(sx, sy, "The globe awaits its first work.", 16, SEPIA, "middle"))
         return "".join(parts), h
-
-    n = len(slots)
-    cx, cw, ch = MARGIN, 252, 264                            # tall enough for a two-line repo name
-    card_ys = []
-    for c in slots:
-        sx, sy = point(c["spot"])
-        card_ys.append(min(max(sy - ch / 2, y + 140), y + h - ch - 10))
-    for key in SPOTS:
-        at_spot = [i for i, c in enumerate(slots) if c["spot"] == key]
-        if not at_spot:
-            continue
-        sx, sy = point(key)
-        parts.append(f'<g opacity="{1 if 0 in at_spot else 0}">{windows_opacity(at_spot, n, STEP)}'
-                     f'<path d="M{cx + cw + 4},{sy:.0f} H{sx - 12:.0f}" stroke="{CHALK}" stroke-width="1" stroke-dasharray="2 4"/>'
-                     f'<circle cx="{sx:.1f}" cy="{sy:.1f}" r="11" fill="none" stroke="{INK}" stroke-width="1.4"/></g>')
-    keys, vals = [], []
-    for i in range(n):
-        keys += [i / n, (i + 1) / n - 0.5 / (n * STEP)]
-        vals += [card_ys[i], card_ys[i]]
-    keys.append(1.0)
-    vals.append(card_ys[0])
-    slide = (f'<animateTransform attributeName="transform" type="translate" dur="{n * STEP}s" repeatCount="indefinite" '
-             f'keyTimes="{";".join(f"{k:.4f}" for k in keys)}" values="{";".join(f"0,{v - card_ys[0]:.1f}" for v in vals)}"/>')
-    top = card_ys[0]
-    card = [f'<rect x="{cx}" y="{top:.1f}" width="{cw}" height="{ch}" fill="{PARCH_DARK}" stroke="{SEPIA}" stroke-width="1"/>',
-            f'<rect x="{cx + 5}" y="{top + 5:.1f}" width="{cw - 10}" height="{ch - 10}" fill="none" stroke="{SEPIA}" stroke-width="0.6" opacity="0.6"/>']
-    distinct = []                                            # (card, [slot indexes where it shows])
-    for i, c in enumerate(slots):
-        for known, where in distinct:
-            if known is c:
-                where.append(i)
-                break
-        else:
-            distinct.append((c, [i]))
-    for c, where in distinct:
-        names = title_lines(c["title"])
-        body = [caps(cx + 22, top + 32, codex["limbs"].get(c["spot"], ""), 8.5, CHALK)]
-        body += [t(cx + 22, top + 64 + k * 26, line, 22, INK, SERIF, 600) for k, line in enumerate(names)]
-        shift = 26 * (len(names) - 1)                        # rows move down when the name takes two lines
-        for r, (value, name) in enumerate(c["rows"][:3]):
-            ry = top + 104 + shift + r * 46
-            value = shorten(str(value), 24)
-            if r == 0 and len(value) <= 4:
-                body += [t(cx + 22, ry, value, 28, CHALK, SERIF, 600), caps(cx + 30 + 18 * len(value), ry - 2, name, 8.5)]
-            else:
-                body += [t(cx + 22, ry, value, 16, CHALK if r == 0 else INK), caps(cx + 22, ry + 18, name, 8.5)]
-        card.append(f'<g opacity="{1 if 0 in where else 0}">{windows_opacity(where, n, STEP)}{"".join(body)}</g>')
-    parts.append(f'<g>{slide}{"".join(card)}</g>')
+    n = len(cards)
+    for i, c in enumerate(cards):
+        parts.append(f'<g opacity="{1 if i == 0 else 0}">{timed_opacity(i, n, STEP) if n > 1 else ""}{sphere_text(sx, sy, c)}</g>')
     return "".join(parts), h
+
+
+# Hands and feet on the 480 x 600 Vitruvian drawing, and whether a label sits above or below
+LIMBS = [((78, 157), "above"), ((402, 157), "above"), ((134, 486), "below"), ((348, 482), "below")]
+
+
+def persona(x, y, w, h, rows: list) -> str:
+    """The Vitruvian Man as the persona: interests at his hands and feet, the other
+    details (name, place, standing, discipline) written underneath, all inside a turning ring."""
+    vs = 0.54
+    fx, fy = x + (w - 480 * vs) / 2, y + 96
+    ring_x, ring_y = fx + VIT_CENTRE[0] * vs, fy + VIT_CENTRE[1] * vs
+    out = [frame(x, y, w, h, "Persona", "Who keeps this codex"),
+           turning_ring(ring_x, ring_y, VIT_RADIUS * vs + 12),
+           inked("vitmask", 480, 600, fx, fy, vs)]
+    interests = next((v for _, v in rows if isinstance(v, list)), [])
+    details = [str(v) for _, v in rows if not isinstance(v, list)]
+    for i, ((px, py), side) in enumerate(LIMBS[:len(interests)]):
+        lx, ly = fx + px * vs, fy + py * vs
+        # hands: label above; feet: below, the second one a line lower so the two never collide
+        ty = ly - 26 if side == "above" else ly + 30 + (28 if i == 3 else 0)
+        out += [t(lx, ty, NUMERALS[i], 11, CHALK, SERIF, 600, "middle"),
+                italic(lx, ty + 15, shorten(interests[i], 26), 12, INK, "middle")]
+    base = y + h - 54
+    if details:
+        out.append(t(x + w / 2, base, details[0], 17, INK, SERIF, 600, "middle"))
+        out.append(italic(x + w / 2, base + 22, shorten(" · ".join(details[1:]), 52), 12.5, SEPIA, "middle"))
+    return "".join(out)
 
 
 # --------------------------------------------------------------------------
@@ -381,25 +397,6 @@ def tongues(x, y, w, h, languages: list[dict]) -> str:
         out += [f'<rect x="{bx}" y="{ry - 9}" width="12" height="10" fill="url(#{HATCHES[(i + 2) % len(HATCHES)][0]})" stroke="{INK}" stroke-width="0.6"/>',
                 t(bx + 22, ry, lang["name"], 13, INK), t(bx + bw, ry, f'{lang["percent"]:.1f}%', 13, SEPIA, MONO, 400, "end"),
                 f'<path d="M{bx},{ry + 8} H{bx + bw}" stroke="{SEPIA}" stroke-width="0.4" opacity="0.6"/>']
-    return "".join(out)
-
-
-LATIN = {"name": "Nomen", "location": "Patria", "status": "Gradus", "degree": "Disciplina", "interests": "Studia", "age": "Aetas"}
-
-
-def persona(x, y, w, h, rows: list) -> str:
-    """Written like a Roman roll of names: a Latin label with its English gloss, then the value."""
-    out = [frame(x, y, w, h, "Persona", "Who keeps this codex")]
-    ly = y + 112
-    for key, value in rows:
-        out += [caps(x + 24, ly, LATIN.get(key, key), 9, CHALK), italic(x + 24, ly + 13, key, 10)]
-        if isinstance(value, list):
-            for i, item in enumerate(value):
-                out += [t(x + 140, ly + i * 22, NUMERALS[i] + ".", 12, CHALK, SERIF, 600, "end"), t(x + 150, ly + i * 22, shorten(item, 26), 15, INK)]
-            ly += 22 * len(value) + 14
-        else:
-            out.append(t(x + 130, ly, shorten(str(value), 24), 16, INK))
-            ly += 38
     return "".join(out)
 
 
@@ -596,7 +593,7 @@ def defs(hands_h: int) -> str:
     masks = "".join(f'<mask id="{mid}" maskUnits="userSpaceOnUse"><image href="{data_uri(name, "image/png")}" width="{w}" height="{h}"/></mask>'
                     for mid, name, w, h in (("vitmask", "vitruvian.png", 480, 600), ("icarusmask", "icarus.png", 440, 438),
                                             ("nestormask", "nestor.png", 240, 327), ("flyermask", "flying-machine.png", 330, 288),
-                                            ("drillmask", "drill.png", 130, 172)))
+                                            ("drillmask", "drill.png", 130, 172), ("atlasmask", "atlas.png", 684, 1048)))
     return f'''<defs>
     <style>@font-face {{ font-family: Cinzel; font-weight: 600; src: url({data_uri("cinzel-600.woff2", "font/woff2")}) format("woff2"); }}
       @font-face {{ font-family: Cardo; src: url({data_uri("cardo-greek.woff2", "font/woff2")}) format("woff2"); unicode-range: U+0370-03FF; }}
@@ -610,6 +607,7 @@ def defs(hands_h: int) -> str:
     <mask id="handsfade"><rect width="{W}" height="{hands_h}" fill="url(#fadeY)"/></mask>
     {masks}
     {hatch}
+    <radialGradient id="sphereglow"><stop offset="0" stop-color="{PARCH}" stop-opacity="0.85"/><stop offset="0.75" stop-color="{PARCH}" stop-opacity="0.6"/><stop offset="1" stop-color="{PARCH}" stop-opacity="0"/></radialGradient>
     <pattern id="hatchchalk" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="{PARCH}"/><path d="M0,0 V4" stroke="{CHALK}" stroke-width="2.2"/></pattern>
   </defs>'''
 
@@ -632,9 +630,9 @@ def build(content: dict, stats: dict, streaks: dict, grade: str, percentile: flo
 
     add(motto(y, codex["motto"]))
     add(offerings(y, stats, streaks, grade))
-    add(proportions(y, content))
+    add(atlas(y, content))
     add(astrolabes(y, streaks, percentile, year_total))
-    row_h = 380
+    row_h = 520
     sections += [tongues(MARGIN, y, HALF, row_h, stats["languages"]), persona(MARGIN + HALF + GAP, y, HALF, row_h, content["driver_profile"])]
     y += row_h + GAP
     add(flight(y, year[-60:], today - dt.timedelta(days=59), codex))
