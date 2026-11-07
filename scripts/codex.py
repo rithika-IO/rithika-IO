@@ -76,6 +76,33 @@ def shorten(s: str, limit: int) -> str:
     return s if len(s) <= limit else s[:limit - 1] + "…"
 
 
+def title_lines(name: str, width: int = 16) -> list[str]:
+    """Split a long repo name over at most two lines, breaking after - _ . or a space.
+
+    A name with no break points is cut at `width`; anything past two lines ends in "…".
+    """
+    import re
+    parts = [p for p in re.split(r"(?<=[-_. ])", name) if p]
+    lines, line = [], ""
+    for part in parts:
+        while len(part) > width:                             # one very long piece: hard split
+            if line:
+                lines.append(line)
+                line = ""
+            lines.append(part[:width])
+            part = part[width:]
+        if line and len(line) + len(part) > width:
+            lines.append(line)
+            line = part
+        else:
+            line += part
+    if line:
+        lines.append(line)
+    if len(lines) > 2:
+        lines = [lines[0], shorten("".join(lines[1:]), width)]
+    return [ln.strip() for ln in lines]
+
+
 def wrap(content: str, width: int) -> list[str]:
     lines, line = [], ""
     for word in content.split():
@@ -243,7 +270,7 @@ def proportions(y: float, content: dict) -> tuple[str, int]:
         return "".join(parts), h
 
     n = len(slots)
-    cx, cw, ch = MARGIN, 252, 236
+    cx, cw, ch = MARGIN, 252, 264                            # tall enough for a two-line repo name
     card_ys = []
     for c in slots:
         sx, sy = point(c["spot"])
@@ -276,10 +303,12 @@ def proportions(y: float, content: dict) -> tuple[str, int]:
         else:
             distinct.append((c, [i]))
     for c, where in distinct:
-        body = [caps(cx + 22, top + 32, codex["limbs"].get(c["spot"], ""), 8.5, CHALK),
-                t(cx + 22, top + 64, shorten(c["title"], 17), 22, INK, SERIF, 600)]
+        names = title_lines(c["title"])
+        body = [caps(cx + 22, top + 32, codex["limbs"].get(c["spot"], ""), 8.5, CHALK)]
+        body += [t(cx + 22, top + 64 + k * 26, line, 22, INK, SERIF, 600) for k, line in enumerate(names)]
+        shift = 26 * (len(names) - 1)                        # rows move down when the name takes two lines
         for r, (value, name) in enumerate(c["rows"][:3]):
-            ry = top + 104 + r * 46
+            ry = top + 104 + shift + r * 46
             value = shorten(str(value), 24)
             if r == 0 and len(value) <= 4:
                 body += [t(cx + 22, ry, value, 28, CHALK, SERIF, 600), caps(cx + 30 + 18 * len(value), ry - 2, name, 8.5)]
