@@ -1,5 +1,6 @@
 {
-  "_readme": "Content for the profile image (drawn by dashboard.py). profile.full_name and race_number appear in the header. car_callouts are the four skill cards at the tyres; spot is front_left, front_right, rear_left or rear_right. The cockpit shows one card per public repo, read from GitHub on every run and interleaved with the skill cards. repo_showcase controls it: limit caps how many repos (null = all, newest pushes first), hide lists repo names to leave out, and types sets a repo's project type by name, e.g. {\"CareNexus\": \"Enterprise app\"}, when the automatic guess is wrong. trophies, tech_stack and radio_messages fill their panels. In tech_stack, text_width is the label width in pixels at 16px bold (leave it out and it is estimated) and icon is an SVG path on a 24x24 grid from simpleicons.org (null for a plain dot). quotes rotate in the band under the header, 7 seconds each; keep each under about 120 characters so it fits on two lines. driver_profile is the JSON-style card next to Powertrain: a list of [key, value] pairs, where a value can be a list (about 12 printed lines fit, braces included).",
+  "theme": "codex",
+  "_readme": "Content for the profile image (drawn by dashboard.py). profile.full_name and race_number appear in the header. car_callouts are the four skill cards at the tyres; spot is front_left, front_right, rear_left or rear_right. The cockpit shows one card per public repo, read from GitHub on every run and interleaved with the skill cards. repo_showcase controls it: limit caps how many repos (null = all, newest pushes first), hide lists repo names to leave out, and types sets a repo's project type by name, e.g. {\"CareNexus\": \"Enterprise app\"}, when the automatic guess is wrong. trophies, tech_stack and radio_messages fill their panels. In tech_stack, text_width is the label width in pixels at 16px bold (leave it out and it is estimated) and icon is an SVG path on a 24x24 grid from simpleicons.org (null for a plain dot). quotes rotate in the band under the header, 7 seconds each; keep each under about 120 characters so it fits on two lines. driver_profile is the JSON-style card next to Powertrain: a list of [key, value] pairs, where a value can be a list (about 12 printed lines fit, braces included). theme picks the design: 'codex' or 'dashboard'. The codex block holds the codex wording: subtitle, motto, the Vitruvian limb names (keyed by the same spots as car_callouts), the card row labels, the flight subtitle, whispers (oracle lines, about 60 characters each) and laurels (icon: column, wing, hammer, owl, club or moon).",
   "profile": {
     "full_name": "Rithika Mandiv",
     "name": "RITHIKA MANDIV",
@@ -576,5 +577,79 @@
         "Machine Learning"
       ]
     ]
-  ]
+  ],
+  "codex": {
+    "subtitle": "Software engineer · keeper of the codex",
+    "motto": {
+      "greek": "Χαλεπὰ τὰ καλά",
+      "english": "Beautiful things are difficult.",
+      "source": "Ancient Greek proverb · quoted by Plato"
+    },
+    "proportions_title": [
+      "The Proportions",
+      "of a Developer"
+    ],
+    "proportions_subtitle": "Each limb carries a craft; the centre holds the works.",
+    "limbs": {
+      "front_left": "Manus dextra · right hand",
+      "front_right": "Manus sinistra · left hand",
+      "rear_left": "Pes dexter · right foot",
+      "rear_right": "Pes sinister · left foot",
+      "cockpit": "Umbilicus · the centre"
+    },
+    "skill_row_labels": [
+      "mastery",
+      "chief tools",
+      "also wielded"
+    ],
+    "repo_row_labels": [
+      "craft",
+      "tools",
+      "stars · last tended"
+    ],
+    "flight_subtitle": [
+      "Sixty days of work. Fly the middle path:",
+      "not so low the sea soaks the wings, not so high the sun melts the wax."
+    ],
+    "whispers": [
+      "The oracle sees a merge conflict upon main.",
+      "All tests are green. The gods favour this push.",
+      "A flaky test lurks in the labyrinth. Tread carefully.",
+      "PostgreSQL consults the index. The omens are good.",
+      "Deploy not on Friday, lest Zeus strike thy servers.",
+      "Rest now. Coffee awaits at the altar."
+    ],
+    "laurels": [
+      {
+        "name": "Pillar of Atlas",
+        "tech": "Java · Spring Boot",
+        "icon": "column"
+      },
+      {
+        "name": "Sandals of Hermes",
+        "tech": "Go · concurrency",
+        "icon": "wing"
+      },
+      {
+        "name": "Forge of Hephaestus",
+        "tech": "GitHub Actions · CI",
+        "icon": "hammer"
+      },
+      {
+        "name": "Owl of Athena",
+        "tech": "Python · Pandas",
+        "icon": "owl"
+      },
+      {
+        "name": "Labours of Heracles",
+        "tech": "React · TS · Node.js",
+        "icon": "club"
+      },
+      {
+        "name": "Watch of Nyx",
+        "tech": "C# · .NET",
+        "icon": "moon"
+      }
+    ]
+  }
 }

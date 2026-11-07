@@ -12,15 +12,17 @@ every panel into ONE self-contained SVG (the car photo is embedded too).
 
 The split:
     build_panels.py   data: GitHub API calls, streaks, grade, recent activity
-    dashboard.py      presentation: turns that data into SVG
+    codex.py          presentation: the Engineer's Codex theme (Renaissance notebook)
+    dashboard.py      presentation: the F1 mission-control theme
+profile_content.json chooses one with "theme".
 
 Inputs
     GITHUB_TOKEN                  token for the GitHub API (provided by GitHub Actions)
     GH_USER                       GitHub login to read statistics for
-    OUT_DIR                       folder holding github-snake-dark.svg; output goes here
+    OUT_DIR                       output folder (also holds github-snake-dark.svg for the dashboard theme)
     DISPLAY_TZ                    time zone for times shown on the image (default Asia/Colombo)
     scripts/profile_content.json  name, number, callouts, trophies, tech stack and radio messages
-    assets/car-top.jpg            top-down car photo, embedded in the image
+    assets/                       images embedded in the image (car photo, RW mark, assets/codex/ artworks)
 
 Output
     OUT_DIR/profile.svg
@@ -39,6 +41,7 @@ import urllib.request
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import codex
 import dashboard
 
 LOGIN = os.environ.get("GH_USER", "rithika-IO")
@@ -394,9 +397,12 @@ def sync_label(now: dt.datetime) -> str:
 def main() -> None:
     if not TOKEN:
         sys.exit("GITHUB_TOKEN is not set")
-    if not SNAKE_FILE.exists():
-        sys.exit(f"{SNAKE_FILE} not found; the snake must be generated before this script runs")
     content = json.loads(CONTENT_FILE.read_text(encoding="utf-8"))
+    # "theme" in profile_content.json picks the look: "codex" (Renaissance notebook)
+    # or "dashboard" (the F1 mission-control design). Both read the same data.
+    theme = content.get("theme", "dashboard")
+    if theme == "dashboard" and not SNAKE_FILE.exists():
+        sys.exit(f"{SNAKE_FILE} not found; the snake must be generated before this script runs")
     now = dt.datetime.now(dt.timezone.utc)
     today = now.date()
 
@@ -407,18 +413,28 @@ def main() -> None:
     content["repo_cards"] = repo_cards(stats.get("repos", []), content.get("repo_showcase", {}), now)
     year_total = sum(days.get(today - dt.timedelta(days=offset), 0) for offset in range(365))
 
-    svg = dashboard.build(
-        content, stats, streaks, grade, percentile,
-        daily=recent_daily(days, today),
-        year_total=year_total,
-        events=fetch_events(now),
-        snake_svg=SNAKE_FILE.read_text(encoding="utf-8"),
-        synced=sync_label(now),
-        login=LOGIN,
-    )
+    events = fetch_events(now)
+    if theme == "codex":
+        svg = codex.build(
+            content, stats, streaks, grade, percentile,
+            year=recent_daily(days, today, 365),
+            events=events,
+            synced=sync_label(now),
+            today=today,
+        )
+    else:
+        svg = dashboard.build(
+            content, stats, streaks, grade, percentile,
+            daily=recent_daily(days, today),
+            year_total=year_total,
+            events=events,
+            snake_svg=SNAKE_FILE.read_text(encoding="utf-8"),
+            synced=sync_label(now),
+            login=LOGIN,
+        )
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "profile.svg").write_text(svg, encoding="utf-8")
-    print(f'Wrote {OUT_DIR}/profile.svg ({len(svg) // 1024} KB, total {streaks["total"]}, grade {grade})')
+    print(f'Wrote {OUT_DIR}/profile.svg ({theme} theme, {len(svg) // 1024} KB, total {streaks["total"]}, grade {grade})')
 
 
 if __name__ == "__main__":
