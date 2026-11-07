@@ -8,7 +8,7 @@ cannot load anything from outside itself. Line drawings are stored as grayscale
 masks (white = ink), so they can be inked in any colour from the palette.
 
 Sections, top to bottom:
-    header       The Creation of Adam hands, RW monogram, name
+    header       The Creation of Adam hands, name, tagline
     motto        Greek proverb with its meaning
     offerings    six stats, each beside a Doric column
     proportions  Vitruvian Man; a note card circles the limbs (skills) and the
@@ -30,7 +30,6 @@ import math
 from pathlib import Path
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets" / "codex"
-BRAND_MARK = ASSETS.parent / "rw-mark.png"
 
 W = 900
 MARGIN = 60
@@ -39,7 +38,6 @@ HALF = (W - 2 * MARGIN - GAP) / 2                            # two folios side b
 
 PARCH, PARCH_DARK = "#E9DFC7", "#DFD2B4"
 INK, SEPIA, GOLD, CHALK = "#3B2F23", "#7A5230", "#C9A227", "#A3412E"
-DEEP_INK = "#1C1611"
 
 SERIF = "Cinzel, 'Trajan Pro', Georgia, serif"
 BODY = "Georgia, 'Times New Roman', serif"
@@ -58,8 +56,7 @@ def esc(value) -> str:
 
 
 def data_uri(name: str, kind: str) -> str:
-    path = BRAND_MARK if name == "rw-mark.png" else ASSETS / name
-    return f"data:{kind};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{kind};base64," + base64.b64encode((ASSETS / name).read_bytes()).decode("ascii")
 
 
 def t(x, y, s, size, fill=INK, family=BODY, weight=400, anchor="start", extra="") -> str:
@@ -163,16 +160,12 @@ def arc(cx, cy, r, d0, d1) -> str:
 # --------------------------------------------------------------------------
 def header(content: dict) -> tuple[str, int]:
     hh = 309                                                 # the hands image is 900 x 309
-    gap_x, gap_y = 477 / 1000 * W, 160 / 343 * hh           # the space between the two fingertips
-    mark_w = 38
-    mark_h = mark_w * 88 / 144
     profile = content["profile"]
     return (f'<image href="{data_uri("hands.jpg", "image/jpeg")}" x="0" y="0" width="{W}" height="{hh}" mask="url(#handsfade)"/>'
-            # the monogram floats just above the gap between the fingertips
-            f'<rect x="0" y="0" width="144" height="88" fill="{DEEP_INK}" mask="url(#rwmask)" '
-            f'transform="translate({gap_x - mark_w / 2:.1f},{gap_y - mark_h - 16:.1f}) scale({mark_w / 144:.4f})"/>'
             + t(W / 2, hh + 40, profile["full_name"].upper(), 38, INK, SERIF, 600, "middle", 'letter-spacing="6"')
-            + caps(W / 2, hh + 68, content["codex"]["subtitle"], 10.5, CHALK, "middle")), hh + 92
+            # personal brand line, with Vitruvius's three qualities of good design underneath
+            + caps(W / 2, hh + 70, content["codex"]["subtitle"], 12, CHALK, "middle")
+            + italic(W / 2, hh + 94, content["codex"].get("subtitle_gloss", ""), 13, SEPIA, "middle")), hh + 114
 
 
 def motto(y: float, m: dict) -> tuple[str, int]:
@@ -586,7 +579,6 @@ def defs(hands_h: int) -> str:
     <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.75"><stop offset="0.6" stop-color="{SEPIA}" stop-opacity="0"/><stop offset="1" stop-color="{SEPIA}" stop-opacity="0.22"/></radialGradient>
     <linearGradient id="fadeY" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#000"/><stop offset="0.08" stop-color="#fff"/><stop offset="0.85" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
     <mask id="handsfade"><rect width="{W}" height="{hands_h}" fill="url(#fadeY)"/></mask>
-    <mask id="rwmask" maskUnits="userSpaceOnUse"><image href="{data_uri("rw-mark.png", "image/png")}" width="144" height="88"/></mask>
     {masks}
     {hatch}
     <pattern id="hatchchalk" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="{PARCH}"/><path d="M0,0 V4" stroke="{CHALK}" stroke-width="2.2"/></pattern>
